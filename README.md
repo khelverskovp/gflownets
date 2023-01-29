@@ -1,7 +1,7 @@
 gflow
 ==============================
 
-Codebase for Bachelor Project - hej
+Codebase for Bachelor Project
 
 Project Organization
 ------------
