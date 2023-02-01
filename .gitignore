@@ -90,3 +90,6 @@ target/
 
 # data
 /data
+
+# only used for own use
+/toymodels
