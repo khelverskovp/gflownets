@@ -9,20 +9,6 @@ import pdb
 from utils import food_items, dish_reward, dish_parents, dish_to_tensor
 from model import FlowModel
 
-#import the dataset from toymodels/data/processed/
-breakfast = torch.load("data/processed/breakfast.pt")
-lunch = torch.load("data/processed/lunch.pt")
-dinner = torch.load("data/processed/dinner.pt")
-
-# convert the dataset to a list
-breakfastList = breakfast.tolist()
-lunchList = lunch.tolist()
-dinnerList = dinner.tolist()
-
-food_items = breakfastList + lunchList + dinnerList
-
-
-
 # Instantiate model and optimizer
 F_sa = FlowModel(100)
 opt = torch.optim.Adam(F_sa.parameters(), 0.001)
