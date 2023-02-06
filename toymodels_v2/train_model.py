@@ -23,7 +23,7 @@ if __name__ == "__main__":
   # gradient step every `update_freq` episode.
   minibatch_loss = 0
   update_freq = 4
-  for episode in tqdm.tqdm(range(100000), ncols=40):
+  for episode in tqdm.tqdm(range(50000), ncols=40):
     # Each episode starts with an "empty state"
     state = []
     # Predict F(s, a)
