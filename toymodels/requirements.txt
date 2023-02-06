@@ -5,4 +5,5 @@
 click
 coverage
 flake8
+pandas
 python-dotenv>=0.5.1

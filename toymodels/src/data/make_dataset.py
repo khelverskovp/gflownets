@@ -16,6 +16,9 @@ def main(input_filepath, output_filepath):
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
 
+    data = pd.read_csv(input_filepath + "/toydata.csv")
+
+    print(data)    
 
 
 
