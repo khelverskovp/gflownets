@@ -19,11 +19,7 @@ def main(input_filepath, output_filepath):
 
     data = pd.read_csv(input_filepath + "/toydata.csv")
 
-    print(np.array(data["breakfast"]))
-
-    breakfast = torch.Tensor()
-
-    print(breakfast)
+    data.to_csv(output_filepath + "/toydata.csv")
 
 
 
