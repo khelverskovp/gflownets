@@ -1,12 +1,13 @@
 import numpy as np
 import torch
+import pandas as pd
 
 #load the dataset from the toymodels/data/processed/dataset.csv file
-dataset = np.loadtxt("data/processed/dataset.csv", delimiter=",", dtype=int)
+data = pd.read_csv("data/processed/toydata.csv")
 
-breakfast = dataset["breakfast"].tolist()
-lunch = dataset["lunch"].tolist()
-dinner = dataset["dinner"].tolist()
+breakfast = data["breakfast"].tolist()
+lunch = data["lunch"].tolist()
+dinner = data["dinner"].tolist()
 
 food_items = breakfast + lunch + dinner
 
