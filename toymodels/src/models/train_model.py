@@ -76,7 +76,8 @@ if __name__ == "__main__":
   #plt.yscale('log')
   plt.show()
 
-  # save model
-  torch.save(F_sa, "models/model.pth")
+  # save model and add the date to the name 
+  torch.save(F_sa, f"models/model_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pth")
+
 
     
