@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 import torch
+import numpy as np
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
@@ -18,7 +19,11 @@ def main(input_filepath, output_filepath):
 
     data = pd.read_csv(input_filepath + "/toydata.csv")
 
-    breakfast = torch.    
+    print(np.array(data["breakfast"]))
+
+    breakfast = torch.Tensor()
+
+    print(breakfast)
 
 
 
