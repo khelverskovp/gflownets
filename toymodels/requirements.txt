@@ -6,4 +6,5 @@ click
 coverage
 flake8
 pandas
+torch
 python-dotenv>=0.5.1
