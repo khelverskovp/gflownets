@@ -1,18 +1,14 @@
 import numpy as np
 import torch
 
-# breakfast products
-# breakfast = ["eggs", "bacon", "bread", "yogurt", "cheese", "fruit", "pancake", "oats", "milk", "honey"]
-breakfast = ["eggs", "bacon"]
+#load the dataset from the toymodels/data/processed/dataset.csv file
+dataset = np.loadtxt("data/processed/dataset.csv", delimiter=",", dtype=int)
 
-# lunch = ["baguette", "ryebread", "cucumber", "salami", "mayo", "mustard", "pickles", "ham", "iceberg", "tomato"]
-lunch = ["baguette", "ryebread"]
+breakfast = dataset["breakfast"].tolist()
+lunch = dataset["lunch"].tolist()
+dinner = dataset["dinner"].tolist()
 
-# dinner = ["chicken", "rice", "curry", "potatoes", "salt", "pepper", "pork", "sriracha", "vegetables", "chickpeas"]
-dinner = ["chicken", "rice"]
-
-# combine everything into one list
-food_items = [*breakfast,*lunch,*dinner]
+food_items = breakfast + lunch + dinner
 
 def get_category(food):
     if food in breakfast:
