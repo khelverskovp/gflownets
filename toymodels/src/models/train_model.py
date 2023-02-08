@@ -9,6 +9,12 @@ import pdb
 from utils import food_items, dish_reward, dish_parents, dish_to_tensor
 from model import FlowModel
 
+import datetime
+
+import wandb
+
+wandb.init(project="toy-project", entity="gflownets")
+
 # Instantiate model and optimizer
 F_sa = FlowModel(100)
 opt = torch.optim.Adam(F_sa.parameters(), 0.001)
@@ -23,6 +29,11 @@ if __name__ == "__main__":
   # gradient step every `update_freq` episode.
   minibatch_loss = 0
   update_freq = 4
+
+  wandb.config = {
+  "learning_rate": 0.001,
+  "epochs": 100
+}
   for episode in tqdm.tqdm(range(50000), ncols=40):
     # Each episode starts with an "empty state"
     state = []
@@ -70,11 +81,16 @@ if __name__ == "__main__":
       opt.step()
       opt.zero_grad()
       minibatch_loss = 0
+    
+    wandb.log({"loss": losses[-1]})
+    wandb.watch(F_sa)
 
   plt.figure(figsize=(10,3))
   plt.plot(losses)
   #plt.yscale('log')
   plt.show()
+
+  
 
   # save model and add the date to the name 
   torch.save(F_sa, f"models/model_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pth")
