@@ -9,7 +9,6 @@ import pdb
 from utils import food_items, dish_reward, dish_parents, dish_to_tensor
 from model import FlowModel
 
-<<<<<<< HEAD
 import hydra
 
 import datetime
@@ -19,15 +18,6 @@ import wandb
 @hydra.main(config_path='conf/', config_name="default_config.yaml")
 def main(cfg):
   wandb.init(project="toy-project", entity="gflownets")
-=======
-from datetime import datetime
-
-import wandb
-
-wandb.init(project="toy-project", entity="gflownets")
-wandb.config.epochs = 500
-wandb.config.batch_size = 4
->>>>>>> abac7a5189c413a9f475bde29a8e28e90095ce13
 
   # Instantiate model and optimizer
   F_sa = FlowModel(100)
