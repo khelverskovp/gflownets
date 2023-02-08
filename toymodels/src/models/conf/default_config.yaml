@@ -1,2 +1,8 @@
 defaults:
     - experiment: exp1
+    - wandb: wandb
+
+# disable hydra changing working directory
+hydra:
+    job:
+        chdir: False
