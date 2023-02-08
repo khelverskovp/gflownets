@@ -1,8 +1,11 @@
-# first config file
-hyperparameters:
+# config file for first experiment
+# hyperparameters
+hp:
   epochs: 1000
   lr: 0.001
-  dataset: 'data/processed'
+  dataset: 'data/processed/toydata.csv'
+  num_hid: 100
+  update_freq: 4 # how often should it update weights
   #n_classes: 20
   #weight_decay: 0
   #opt: 'adam' # optimizer

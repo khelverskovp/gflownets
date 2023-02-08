@@ -4,26 +4,45 @@ import torch.nn as nn
 from torch.distributions.categorical import Categorical
 import tqdm
 import matplotlib.pyplot as plt
-import pdb
+import pandas as pd
 
-from utils import food_items, dish_reward, dish_parents, dish_to_tensor
+from utils import dish_reward, dish_parents, dish_to_tensor
 from model import FlowModel
 
 import hydra
+import omegaconf
 
 from datetime import datetime
 
 import wandb
 
-@hydra.main(config_path='conf/', config_name="default_config.yaml")
+@hydra.main(config_path='conf/', config_name="default_config.yaml", version_base="1.1")
 def main(cfg):
-  wandb.init(project="toy-project", entity="gflownets")
-  wandb.config.epochs = 500
-  wandb.config.batch_size = 4
+  # retrieve the values from the config files
+  cfg_wandb = cfg.wandb.params
+  cfg_exp = cfg.experiment
 
+  # integrate the parameters from hydra into wandb 
+  # only store the experiment specific parameters
+  cfg_params = omegaconf.OmegaConf.to_container(
+        cfg_exp, resolve=True, throw_on_missing=True
+  )["hp"]
+
+  # initialize weights and biases agent
+  wandb.init(entity=cfg_wandb.entity, project=cfg_wandb.project, config=cfg_params)
+  
   # Instantiate model and optimizer
-  F_sa = FlowModel(100)
-  opt = torch.optim.Adam(F_sa.parameters(), 0.001)
+  F_sa = FlowModel(cfg_exp.hp.num_hid)
+  opt = torch.optim.Adam(F_sa.parameters(), cfg_exp.hp.lr)
+
+  # Load the data set
+  data = pd.read_csv(cfg_exp.hp.dataset)
+
+  breakfast = data["breakfast"].tolist()
+  lunch = data["lunch"].tolist()
+  dinner = data["dinner"].tolist()
+
+  food_items = breakfast + lunch + dinner
 
   N_total = len(food_items)
 
@@ -33,9 +52,9 @@ def main(cfg):
   # To not complicate the code, I'll just accumulate losses here and take a 
   # gradient step every `update_freq` episode.
   minibatch_loss = 0
-  update_freq = 4
+  update_freq = cfg_exp.hp.update_freq
 
-  for episode in tqdm.tqdm(range(500), ncols=40):
+  for episode in tqdm.tqdm(range(cfg_exp.hp.epochs), ncols=40):
     # Each episode starts with an "empty state"
     state = []
     # Predict F(s, a)
@@ -86,10 +105,10 @@ def main(cfg):
     wandb.log({"loss": losses[-1]})
     wandb.watch(F_sa)
 
-  plt.figure(figsize=(10,3))
-  plt.plot(losses)
+  #plt.figure(figsize=(10,3))
+  #plt.plot(losses)
   #plt.yscale('log')
-  plt.show()
+  #plt.show()
 
   # save model and add the date to the name 
   torch.save(F_sa, f"models/model_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pth")
