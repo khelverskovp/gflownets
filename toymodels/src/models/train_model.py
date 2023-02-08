@@ -11,13 +11,15 @@ from model import FlowModel
 
 import hydra
 
-import datetime
+from datetime import datetime
 
 import wandb
 
 @hydra.main(config_path='conf/', config_name="default_config.yaml")
 def main(cfg):
   wandb.init(project="toy-project", entity="gflownets")
+  wandb.config.epochs = 500
+  wandb.config.batch_size = 4
 
   # Instantiate model and optimizer
   F_sa = FlowModel(100)
