@@ -9,11 +9,13 @@ import pdb
 from utils import food_items, dish_reward, dish_parents, dish_to_tensor
 from model import FlowModel
 
-import datetime
+from datetime import datetime
 
 import wandb
 
 wandb.init(project="toy-project", entity="gflownets")
+wandb.config.epochs = 500
+wandb.config.batch_size = 4
 
 # Instantiate model and optimizer
 F_sa = FlowModel(100)
@@ -30,11 +32,7 @@ if __name__ == "__main__":
   minibatch_loss = 0
   update_freq = 4
 
-  wandb.config = {
-  "learning_rate": 0.001,
-  "epochs": 100
-}
-  for episode in tqdm.tqdm(range(50000), ncols=40):
+  for episode in tqdm.tqdm(range(500), ncols=40):
     # Each episode starts with an "empty state"
     state = []
     # Predict F(s, a)
@@ -89,8 +87,6 @@ if __name__ == "__main__":
   plt.plot(losses)
   #plt.yscale('log')
   plt.show()
-
-  
 
   # save model and add the date to the name 
   torch.save(F_sa, f"models/model_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pth")
