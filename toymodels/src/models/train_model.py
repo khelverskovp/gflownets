@@ -9,19 +9,22 @@ import pdb
 from utils import food_items, dish_reward, dish_parents, dish_to_tensor
 from model import FlowModel
 
+import hydra
+
 import datetime
 
 import wandb
 
-wandb.init(project="toy-project", entity="gflownets")
+@hydra.main(config_path='conf/', config_name="default_config.yaml")
+def main(cfg):
+  wandb.init(project="toy-project", entity="gflownets")
 
-# Instantiate model and optimizer
-F_sa = FlowModel(100)
-opt = torch.optim.Adam(F_sa.parameters(), 0.001)
+  # Instantiate model and optimizer
+  F_sa = FlowModel(100)
+  opt = torch.optim.Adam(F_sa.parameters(), 0.001)
 
-N_total = len(food_items)
+  N_total = len(food_items)
 
-if __name__ == "__main__":
   # Let's keep track of the losses and the faces we sample
   losses = []
   sampled_dishes = []
@@ -94,6 +97,9 @@ if __name__ == "__main__":
 
   # save model and add the date to the name 
   torch.save(F_sa, f"models/model_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pth")
+
+if __name__ == "__main__":
+  main()
 
 
     
