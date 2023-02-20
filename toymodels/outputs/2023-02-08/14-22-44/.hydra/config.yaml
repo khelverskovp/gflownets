@@ -1,5 +1,0 @@
-experiment:
-  hyperparameters:
-    epochs: 1000
-    lr: 0.001
-    dataset: data/processed
