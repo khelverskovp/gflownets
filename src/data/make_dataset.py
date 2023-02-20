@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 import pandas as pd
 import numpy as np
-
+import json
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
@@ -42,13 +42,14 @@ def main(input_filepath, output_filepath):
 
     # change datatype of dockscore to float64
     dockscore = df.dockscore.astype("float64")
-
+    
+    # store in nparray to give as input data for data frame
     data = np.array([smiles,dockscore,df.blockidxs,df.slices,df.jbonds,df.stems])
 
     # put into dataframe
     df_processed = pd.DataFrame(data.T,columns=columns)
-
     
+    # save to a csv file
     output_filename = "docked_mols.csv"
     df_processed.to_csv(f"{output_filepath}/{output_filename}",index=False)
 
