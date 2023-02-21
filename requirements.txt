@@ -11,4 +11,5 @@ hydra-core
 h5py
 pandas
 numpy
-json
+
+# you must install pytables with conda
