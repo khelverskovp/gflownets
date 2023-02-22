@@ -1,6 +1,8 @@
 import rdkit
 from rdkit import Chem
 from rdkit.Chem import AllChem, Draw
+import pandas as pd
+import numpy as np
 
 #print(rdkit.__version__)
 
@@ -14,13 +16,30 @@ for atom in m.GetAtoms():
 
 in_dir = "reports/figures/molecules/"
 
-template = Chem.MolFromSmiles('c1nccc2n1ccc2')
+# load data points
+filename = "data/processed/docked_mols.csv"
+df = pd.read_csv(filename)
 
-ms = [Chem.MolFromSmiles(smi) for smi in ('OCCc1ccn2cnccc12','C1CC1Oc1cc2ccncn2c1','CNC(=O)c1nccc2cccn12')]
+print(df.tail()["jbonds"])
+
+
+pairs = []
+
+for i in range(len(df["blockidxs"])):
+    if i % 1000 == 0:
+        print(i)
+    for j in range(i+1,len(df["blockidxs"])):
+        if i != j:
+            if len(df["blockidxs"][i]) == len(df["blockidxs"][j]):
+                if np.all(np.array(df["blockidxs"][i]) == np.array(df["blockidxs"][j])):
+                    pairs.append((i,j))
+                    print(i,j)
+
+
+ms = [Chem.MolFromSmiles(smi) for smi in [df["smiles"][2],df["smiles"][480]]]
 
 for m in ms: tmp=AllChem.Compute2DCoords(m)
-from rdkit.Chem import Draw
-Draw.MolToFile(ms[0],f'{in_dir}cdk2_mol1.o.png')    
-Draw.MolToFile(ms[1],f'{in_dir}cdk2_mol2.o.png')
-Draw.MolToFile(ms[2],f'{in_dir}cdk2_mol3.o.png')
+
+for i, m in enumerate(ms): Draw.MolToFile(m,f'{in_dir}cdk2_mol{i}.o.png')    
+
 
