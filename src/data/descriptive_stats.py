@@ -37,9 +37,9 @@ def main(input_filepath):
     print(f"Mean: {np.mean(df['dockscore'])}")
     print(f"Standard deviation: {np.std(df['dockscore'])}") """
 
-    print(df.head()["stems"])
-    print(df.head()["jbonds"])
-
+    # print specific data point
+    print(df.iloc[316932])
+    print(df.iloc[316933])
 
 
 
