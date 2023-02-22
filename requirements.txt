@@ -11,4 +11,3 @@ hydra-core
 h5py
 pandas
 numpy
-json

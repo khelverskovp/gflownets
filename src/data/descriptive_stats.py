@@ -33,14 +33,13 @@ def main(input_filepath):
 
     
     # print descriptive statistics
-    """ print("Dockscore statistics:")
-    print(f"Min. value: {np.min(df['dockscore'])}")
-    print(f"Max. value: {np.max(df['dockscore'])}")
-    print(f"Mean: {np.mean(df['dockscore'])}")
-    print(f"Standard deviation: {np.std(df['dockscore'])}") """
+    print(df.iloc[4])
 
-    print(np.max(df["blockidxs"]))
+    # print max value of df["slices"] and min value
+    print(df["slices"].max())
+    print(df["slices"].min())
 
+    print(df["slices"])
 
 
 
