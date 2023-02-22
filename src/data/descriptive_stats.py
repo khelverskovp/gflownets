@@ -33,13 +33,9 @@ def main(input_filepath):
     # print descriptive statistics
     print(df.iloc[4])
 
-    # print max value of df["slices"] and min value
-    print(df["slices"].max())
-    print(df["slices"].min())
-    print(df.head()["stems"])
-    print(df.head()["jbonds"])
-
-    print(df["slices"])
+    # print specific data point
+    print(df.iloc[316932])
+    print(df.iloc[316933])
 
 
 
