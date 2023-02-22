@@ -11,5 +11,6 @@ hydra-core
 h5py
 pandas
 numpy
+rdkit
 
 # you must install pytables with conda
