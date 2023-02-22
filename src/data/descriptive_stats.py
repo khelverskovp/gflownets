@@ -14,8 +14,6 @@ def main(input_filepath):
         cleaned data ready to be analyzed (saved in ../processed).
     """
     logger = logging.getLogger(__name__)
-    logger.info('making preprocessed data set from raw data')
-
 
     # load data points
     filename = "docked_mols.csv"
@@ -38,6 +36,8 @@ def main(input_filepath):
     # print max value of df["slices"] and min value
     print(df["slices"].max())
     print(df["slices"].min())
+    print(df.head()["stems"])
+    print(df.head()["jbonds"])
 
     print(df["slices"])
 
