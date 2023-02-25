@@ -31,11 +31,13 @@ def main(input_filepath):
 
     
     # print descriptive statistics
-    print(df.iloc[4])
+    #print(df.iloc[4])
 
     # print specific data point
-    print(df.iloc[316932])
-    print(df.iloc[316933])
+    #print(df.iloc[316932])
+    #print(df.iloc[316933])
+
+    print(sum(df["dockscore"][df["dockscore"] <= 0]) / len(df["dockscore"]))
 
 
 
