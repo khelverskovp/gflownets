@@ -49,6 +49,6 @@ print(df["smiles"][temp[10][1]])
 
 for m in ms: tmp=AllChem.Compute2DCoords(m)
 
-for i, m in enumerate(ms): Draw.MolToFile(m,f'{in_dir}ZINC_mol{i}.png')    
+for i, m in enumerate(ms): Draw.MolToFile(m,f'{in_dir}mol{i}.png')    
 
 
