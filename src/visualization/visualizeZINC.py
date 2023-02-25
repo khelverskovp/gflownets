@@ -40,9 +40,6 @@ class VisualizerZINC:
             self.visualizeMolecule(idx,subdir="small/")
 
 
-
-            
-
 visualizer = VisualizerZINC()  
 
 min_length = 15
