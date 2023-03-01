@@ -15,6 +15,7 @@ rdkit
 torch
 torch-sparse
 torch-geometric
+torch_scatter
 
 # you must install pytables with conda
 

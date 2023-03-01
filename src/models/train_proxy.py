@@ -45,7 +45,7 @@ parser.add_argument("--learning_rate", default=2.5e-4, help="Learning rate", typ
 parser.add_argument("--mbsize", default=64, help="Minibatch size", type=int)
 parser.add_argument("--opt_beta", default=0.9, type=float)
 parser.add_argument("--nemb", default=64, help="#hidden", type=int)
-parser.add_argument("--num_iterations", default=200000, type=int)
+parser.add_argument("--num_iterations", default=2, type=int)
 parser.add_argument("--num_conv_steps", default=12, type=int)
 parser.add_argument("--array", default='')
 parser.add_argument("--repr_type", default='atom_graph')

@@ -4,8 +4,8 @@ from collections import defaultdict
 import os.path
 import numpy as np
 
-from molMDP import BlockMoleculeData, MolMDP
-import chem as chem
+from src.utils.molMDP import BlockMoleculeData, MolMDP
+import src.utils.chem as chem
 from rdkit import Chem
 
 import src.models.model_atom as model_atom

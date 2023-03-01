@@ -27,7 +27,7 @@ import torch.nn.functional as F
 from torch_geometric.data import Data, Batch
 import torch_geometric.nn as gnn
 
-from mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
+from src.utils.mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
 
 class Dataset:
 
