@@ -32,21 +32,43 @@ class VisualizerZINC:
         print(f"Path: {path}\n")
 
     # visualize molecules where the smiles strings where the length is between some prefixed lengths
-    def visualizeMolecules(self,min_length=15,max_length=20,n_mols=2):
-        lengths = np.array([len(s) for s in self.smiles])
-        # retrieve the indices of the molecules
-        idxs = np.arange(len(self.smiles))[(lengths >= min_length) & (lengths <= max_length)][:n_mols]
+    def visualizeMolecules(self,idxs=None,min_length=15,max_length=20,n_mols=2,subdir="small/"):
+        if idxs == None:
+            lengths = np.array([len(s) for s in self.smiles])
+            # retrieve the indices of the molecules
+            idxs = np.arange(len(self.smiles))[(lengths >= min_length) & (lengths <= max_length)][:n_mols]
         for idx in idxs:
-            self.visualizeMolecule(idx,subdir="small/")
+            self.visualizeMolecule(idx,subdir=subdir)
 
 
 visualizer = VisualizerZINC()  
 
-min_length = 15
-max_length = 20
-n_mols = 2
+min_length = 120
+max_length = 200
+n_mols = 1
 
-visualizer.visualizeMolecules(min_length=min_length,max_length=max_length,n_mols=n_mols)
+#visualizer.visualizeMolecules(min_length=min_length,max_length=max_length,n_mols=n_mols,subdir="big/")
+visualizer.visualizeMolecules(idxs=[22, 91, 33, 20, 42],subdir="general/")
+
+m = Chem.MolFromSmiles("O=S=O")
+# compute 2D structure
+_ = AllChem.Compute2DCoords(m)
+# draw to file
+path = f'reports/figures/test8.png'
+
+""" for i, atom in enumerate(m.GetAtoms()):
+    if i >= 12 and i < 21:
+        print(atom.GetAtomicNum()) """
+
+Draw.MolToFile(m,path)
+
+print(visualizer.df.iloc[39])
+
+print(visualizer.df["jbonds"][39])
+
+m = Chem.MolFromSmiles("c1ncc2nc[nH]c2n1")
+for atom in m.GetAtoms():
+    print(atom.GetAtomicNum())
 
 
 

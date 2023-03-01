@@ -91,3 +91,6 @@ target/
 # data
 /data
 
+# figures from report
+reports/
+
