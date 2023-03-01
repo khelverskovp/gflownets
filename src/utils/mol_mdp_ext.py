@@ -8,8 +8,7 @@ from utils.molMDP import BlockMoleculeData, MolMDP
 import utils.chem as chem
 from rdkit import Chem
 
-import model_atom, model_block, model_fingerprint
-
+import model_atom, model_block
 
 class BlockMoleculeDataExtended(BlockMoleculeData):
 
