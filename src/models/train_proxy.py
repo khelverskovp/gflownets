@@ -143,7 +143,7 @@ class Dataset(_Dataset):
 
 def main(args):
     bpath = "data/raw/blocks_PDB_105.json"
-    device = torch.device('cuda')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     dataset = Dataset(args, bpath, device, floatX=torch.float)
     dataset.load_h5("data/raw/docked_mols.h5", args)
