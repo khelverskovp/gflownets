@@ -31,9 +31,9 @@ import torch_geometric.nn as gnn
 
 from utils import chem
 
-from mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
+from utils.mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
 
-import model_atom, model_block, model_fingerprint
+import model_atom, model_block
 
 tmp_dir = "/tmp/molexp"
 
