@@ -109,7 +109,8 @@ class Dataset(_Dataset):
                 self.rews.append(m.reward)
                 self.train_mols.append(m)
                 self.train_mols_map[df.iloc[i].name] = m
-            if len(self.train_mols) >= num_examples:
+            # make sure num_examples is not None
+            if num_examples and len(self.train_mols) >= num_examples:
                 break
         store.close()
 
