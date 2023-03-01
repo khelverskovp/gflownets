@@ -140,11 +140,11 @@ class Dataset(_Dataset):
 
 
 def main(args):
-    bpath = "data/blocks_PDB_105.json"
+    bpath = "data/raw/blocks_PDB_105.json"
     device = torch.device('cuda')
 
     dataset = Dataset(args, bpath, device, floatX=torch.float)
-    dataset.load_h5("data/docked_mols.h5", args)
+    dataset.load_h5("data/raw/docked_mols.h5", args)
 
     exp_dir = f'{args.save_path}/proxy_{args.array}_{args.run}/'
     os.makedirs(exp_dir, exist_ok=True)

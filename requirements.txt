@@ -12,6 +12,7 @@ h5py
 pandas
 numpy
 rdkit
+scipy
 torch
 torch_scatter
 torch-sparse
