@@ -55,6 +55,7 @@ parser.add_argument("--save_path", default='results/')
 parser.add_argument("--print_array_length", default=False, action='store_true')
 parser.add_argument("--progress", default='yes')
 parser.add_argument("--dump_episodes", default='')
+parser.add_argument("--include_nblocks", default=False)
 
 
 from src.utils.dataset import Dataset as _Dataset
