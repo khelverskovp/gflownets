@@ -90,7 +90,7 @@ class Dataset(_Dataset):
 
         test_idxs = self.test_split_rng.choice(len(df), int(test_ratio * len(df)), replace=False)
 
-        split_bool = np.zeros(len(df), dtype=np.bool)
+        split_bool = np.zeros(len(df), dtype=np.bool_)
         split_bool[test_idxs] = True
         print("split test", sum(split_bool), len(split_bool), "num examples", num_examples)
         self.rews = []
