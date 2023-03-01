@@ -57,9 +57,7 @@ parser.add_argument("--progress", default='yes')
 parser.add_argument("--dump_episodes", default='')
 
 
-
-from gflownet import Dataset as _Dataset
-
+from utils.dataset import Dataset as _Dataset
 
 class Dataset(_Dataset):
 
