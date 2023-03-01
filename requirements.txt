@@ -12,6 +12,8 @@ h5py
 pandas
 numpy
 rdkit
+torch
+torch-geometric
 
 # you must install pytables with conda
 
