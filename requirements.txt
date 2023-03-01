@@ -13,6 +13,7 @@ pandas
 numpy
 rdkit
 torch
+torch-sparse
 torch-geometric
 
 # you must install pytables with conda

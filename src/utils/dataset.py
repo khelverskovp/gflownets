@@ -27,6 +27,8 @@ import torch.nn.functional as F
 from torch_geometric.data import Data, Batch
 import torch_geometric.nn as gnn
 
+from mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
+
 class Dataset:
 
     def __init__(self, args, bpath, device, floatX=torch.double):
@@ -269,26 +271,3 @@ class Dataset:
             [i.set() for i in self.resume_events]
             [i.join(0.05) for i in self.sampler_threads]
 
-
-def make_model(args, mdp, out_per_mol=1):
-    if args.repr_type == 'block_graph':
-        model = model_block.GraphAgent(nemb=args.nemb,
-                                       nvec=0,
-                                       out_per_stem=mdp.num_blocks,
-                                       out_per_mol=out_per_mol,
-                                       num_conv_steps=args.num_conv_steps,
-                                       mdp_cfg=mdp,
-                                       version=args.model_version)
-    elif args.repr_type == 'atom_graph':
-        model = model_atom.MolAC_GCN(nhid=args.nemb,
-                                     nvec=0,
-                                     num_out_per_stem=mdp.num_blocks,
-                                     num_out_per_mol=out_per_mol,
-                                     num_conv_steps=args.num_conv_steps,
-                                     version=args.model_version,
-                                     do_nblocks=(hasattr(args,'include_nblocks')
-                                                 and args.include_nblocks), dropout_rate=0.1)
-    elif args.repr_type == 'morgan_fingerprint':
-        raise ValueError('reimplement me')
-        model = model_fingerprint.MFP_MLP(args.nemb, 3, mdp.num_blocks, 1)
-    return model

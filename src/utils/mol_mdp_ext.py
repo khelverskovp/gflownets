@@ -4,8 +4,8 @@ from collections import defaultdict
 import os.path
 import numpy as np
 
-from utils.molMDP import BlockMoleculeData, MolMDP
-import utils.chem as chem
+from molMDP import BlockMoleculeData, MolMDP
+import chem as chem
 from rdkit import Chem
 
 import src.models.model_atom as model_atom
@@ -218,8 +218,6 @@ class MolMDPExtended(MolMDP):
             return model_block.mols2batch(mols, self)
         elif self.repr_type == 'atom_graph':
             return model_atom.mols2batch(mols, self)
-        elif self.repr_type == 'morgan_fingerprint':
-            return model_fingerprint.mols2batch(mols, self)
 
     def mol2repr(self, mol=None):
         if mol is None:
@@ -233,8 +231,6 @@ class MolMDPExtended(MolMDP):
             r = model_atom.mol2graph(mol, self, self.floatX,
                                      bonds=self.include_bonds,
                                      nblocks=self.include_nblocks)
-        elif self.repr_type == 'morgan_fingerprint':
-            r = model_fingerprint.mol2fp(mol, self, self.floatX)
         #self.molcache[molhash] = r
         return r
 

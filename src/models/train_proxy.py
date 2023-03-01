@@ -29,9 +29,9 @@ import torch.nn.functional as F
 from torch_geometric.data import Data, Batch
 import torch_geometric.nn as gnn
 
-from utils import chem
+from src.utils import chem
 
-from utils.mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
+from src.utils.mol_mdp_ext import MolMDPExtended, BlockMoleculeDataExtended
 
 import model_atom, model_block
 
@@ -57,7 +57,7 @@ parser.add_argument("--progress", default='yes')
 parser.add_argument("--dump_episodes", default='')
 
 
-from utils.dataset import Dataset as _Dataset
+from src.utils.dataset import Dataset as _Dataset
 
 class Dataset(_Dataset):
 
@@ -176,11 +176,6 @@ def main(args):
                                      num_conv_steps=args.num_conv_steps,
                                      version=args.model_version)
         model.to(device)
-    elif args.repr_type == 'morgan_fingerprint':
-        raise ValueError('reimplement me')
-        model = model_fingerprint.MFP_MLP(args.nemb, 3, mdp.num_blocks, 1)
-        model.to(device)
-
 
     best_model = model
     best_test_loss = 1000
