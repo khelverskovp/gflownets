@@ -1,8 +1,11 @@
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem, Draw
+from rdkit.Chem.Draw import rdMolDraw2D
+from rdkit.Chem.rdchem import Mol
 import numpy as np
 from typing import List
+from matplotlib.colors import ColorConverter
 
 # keeps track of the domain of possible blocks
 class BlockDictionary:
@@ -22,6 +25,10 @@ class BlockDictionary:
         # retrieve the rdkit representation of each molecule
         self.block_mols = [Chem.MolFromSmiles(smi) for smi in self.block_smis]
         self.block_natoms = [m.GetNumAtoms() for m in self.block_mols]
+
+        # define colors for molecule plots
+        # i.e. highlighting colors of bonds
+        self.colors = ["red","green","blue","orange","purple","pink","cyan","olive"]
 
 # class that defines a specific molecule
 class BlockMolecule:
@@ -43,6 +50,9 @@ class BlockMolecule:
         self.numblocks = 0    # number of blocks in the molecule
     
     def add_block(self, blockidx: int, stemidx: int=0) -> None:
+        # ensure that we can actually add a block to the molecule
+        assert (self.numblocks == 0 or len(self.stems) > 0), "No open stems! Cannot add block to molecule" 
+
         # add the block to the molecule lists
         self.blockidxs.append(blockidx)
         # get smiles string
@@ -81,61 +91,132 @@ class BlockMolecule:
     def get_smiles(self) -> List[str]:
         return [self.bdict.block_smis[idx] for idx in self.blockidxs]
 
+
+    def get_mol_from_jbonds(self) -> Mol:
+        """
+        represents the molecule in rdkit.Chem format
+        return: molecule in rdkit.Chem.rdchem.Mol form
+        """
+
+        # 
+        jun_bonds = np.asarray(self.jbonds)
+        if len(self.blocks) == 0: return None, None
         
+        # combine blocks into a single molecule
+        mol = self.blocks[0]
+        for i in np.arange(1,self.numblocks):
+            mol = Chem.CombineMols(mol, self.blocks[i])
+        
+        # add junction bonds between fragments
+        frag_startidx = np.asarray(self.slices[:-1])
 
-def mol_from_frag(jun_bonds, frags=None, frag_smis=None, coord=None, optimize=False):
-    "joins 2 or more fragments into a single molecule"
-    jun_bonds = np.asarray(jun_bonds)
-    #if jun_bonds.shape[0] == 0: jun_bonds = np.empty([0,4])
-    if frags is not None:
-        pass
-    elif frags is None and frag_smis is not None:
-        frags = [Chem.MolFromSmiles(frag_name) for frag_name in frag_smis]
-    else:
-        raise ValueError("invalid argument either frags or frags smis should be not None")
-    if len(frags) == 0: return None, None
-    nfrags = len(frags)
-    # combine fragments into a single molecule
-    mol = frags[0]
-    for i in np.arange(nfrags-1)+1:
-        mol = Chem.CombineMols(mol, frags[i])
-    # add junction bonds between fragments
-    frag_startidx = np.concatenate([[0], np.cumsum([frag.GetNumAtoms() for frag in frags])], 0)[:-1]
+        # check if any junction bonds exists
+        if jun_bonds.size == 0:
+            mol_bonds = []
+        else:
+            # creates list of bonds
+            # e.g.
+            # jun_bonds = [[0,1,0,0],[0,2,1,1]]
+            # frag_startidx = [0,6,8]
+            # mol_bonds = [[0,6],[1,9]]
+            mol_bonds = frag_startidx[jun_bonds[:, 0:2]] + jun_bonds[:, 2:4]
+        
+        # make it possible to add bonds to molecule
+        emol = Chem.EditableMol(mol)
 
-    if jun_bonds.size == 0:
-        mol_bonds = []
-    else:
-        mol_bonds = frag_startidx[jun_bonds[:, 0:2]] + jun_bonds[:, 2:4]
+        # add single covalent bonds between blocks using the obtained mol_bonds
+        [emol.AddBond(int(bond[0]), int(bond[1]), Chem.BondType.SINGLE) for bond in mol_bonds]
 
-    emol = Chem.EditableMol(mol)
+        # get molecule into Mol format (normal molecule)
+        mol = emol.GetMol()
+        atoms = list(mol.GetAtoms())
 
-    [emol.AddBond(int(bond[0]), int(bond[1]), Chem.BondType.SINGLE) for bond in mol_bonds]
-    mol = emol.GetMol()
-    atoms = list(mol.GetAtoms())
+        # make space to add blocks
+        # i.e. remove existing hydrogen atoms
+        def _pop_H(atom):
+            nh = atom.GetNumExplicitHs()
+            if nh > 0: atom.SetNumExplicitHs(nh-1)
 
-    def _pop_H(atom):
-        nh = atom.GetNumExplicitHs()
-        if nh > 0: atom.SetNumExplicitHs(nh-1)
-
-    [(_pop_H(atoms[bond[0]]), _pop_H(atoms[bond[1]])) for bond in mol_bonds]
-    #print([(atom.GetNumImplicitHs(), atom.GetNumExplicitHs(),i) for i,atom in enumerate(mol.GetAtoms())])
-    Chem.SanitizeMol(mol)
-    # create and optimize 3D structure
-    if optimize:
-        assert not "h" in set([atm.GetSymbol().lower() for atm in mol.GetAtoms()]), "can't optimize molecule with h"
-        Chem.AddHs(mol)
-        AllChem.EmbedMolecule(mol)
-        AllChem.MMFFOptimizeMolecule(mol)
-        Chem.RemoveHs(mol)
-    return mol, mol_bonds
-
+        # remove the hydrogen atoms for each bond
+        [(_pop_H(atoms[bond[0]]), _pop_H(atoms[bond[1]])) for bond in mol_bonds]
+        
+        # sanitize mol
+        Chem.SanitizeMol(mol)
+        
+        return mol, mol_bonds
     
+    def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False) -> None:
+        """
+        params:
+        name: filename
+        """
+
+        # retrieve mol in rdkit format as well as bonds
+        mol,bonds = molecule.get_mol_from_jbonds()
+        
+        # number of bonds
+        nbonds = len(bonds)
+
+        # create drawing surface
+        d = rdMolDraw2D.MolDraw2DCairo(500, 500)
+
+        # check highlighting condition
+
+        if highlightBonds:
+            # get colors from block dictionary and convert to tuple format
+            colors = [ColorConverter().to_rgb(color) for color in self.bdict.colors][:nbonds]
+
+            # list to store highlighted atoms and bonds
+            highlightedAtoms = []
+            highlightedBonds = []
+
+            # dictionaries to store atom and bond colors
+            atom_cols = {}
+            bond_cols = {}
+
+            for bond, color in zip(bonds,colors):
+                # get atom indices
+                # convert to integers since rdkit has problems with numpy.int64
+                atm1 = int(bond[0])
+                atm2 = int(bond[1])
+
+                # add atoms to highlighted atoms list
+                highlightedAtoms.extend([atm1,atm2])
+
+                # update colors
+                atom_cols[atm1] = color
+                atom_cols[atm2] = color
+
+                # get bond index
+                bond_idx = mol.GetBondBetweenAtoms(atm1,atm2).GetIdx() 
+
+                # add bond to highlighted bonds
+                highlightedBonds.append(bond_idx)
+
+                # update color
+                bond_cols[bond_idx] = color
+          
+            rdMolDraw2D.PrepareAndDrawMolecule(d, mol, highlightAtoms=highlightedAtoms,
+                                           highlightAtomColors=atom_cols,
+                                           highlightBonds=highlightedBonds,
+                                           highlightBondColors=bond_cols)
+        else:
+            rdMolDraw2D.PrepareAndDrawMolecule(d, mol)
+        
+        # save image to file
+        path = f'reports/figures/molecules/builds/'
+        filename = f'{name}.png'
+        d.WriteDrawingText(path + filename)
+
 if __name__ == "__main__":
     bpath = "data/raw/blocks_PDB_105.json"
     molecule = BlockMolecule(bpath=bpath)
     
-    for i in range(5):
-        molecule.add_block(np.random.randint(0,105))
+    for i in range(9):
+        try:
+            molecule.add_block(np.random.randint(0,105))
+        except:
+            break
 
     
     print(f"blockidxs: {molecule.blockidxs}")
@@ -143,17 +224,10 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    mol = mol_from_frag(molecule.jbonds,frag_smis=molecule.get_smiles())[0]
-    print(Chem.MolToSmiles(mol))
-    mol2 = Chem.MolFromSmiles(molecule.get_smiles()[0])
-    print(mol)
-    print(mol2)
-    _ = AllChem.Compute2DCoords(mol)
+    molecule.draw_mol_to_file("marcus",highlightBonds=True)
 
-    # draw to file
-    path = f'reports/figures/molecules/builds/test.png'
-    Draw.MolToFile(mol,path)
     
+
 
 
 
