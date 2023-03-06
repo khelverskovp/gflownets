@@ -13,7 +13,7 @@ class VisualizerZINC:
     out_dir = "reports/figures/molecules/ZINC/"
 
     def __init__(self):
-        self.df = df = pd.read_csv(self.filename)
+        self.df = pd.read_csv(self.filename)
         self.smiles = self.df["smiles"]
 
     def visualizeMolecule(self,idx,subdir=""):
