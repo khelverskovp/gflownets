@@ -33,69 +33,94 @@ class BlockDictionary:
         self.colors = ["red","green","blue","orange","purple","pink","cyan","olive"]
     
     def build_translation_table(self):
-        """build a symmetry mapping for blocks. Necessary to compute parent transitions"""
+        """
+        build translation table for symmetrical attachments to molecules.
+        used to compute parent states
+        inspired by code from E. Bengio github repo on gflownets
+        """
+
+        # create dictionary of dictionaries
+        # a dictionary for each blockidx
+        # i.e. self.translation_table[blockidx]: dict
+        # each dict match from a stem to a blockidx
+        # i.e. if self.translation_table[5][0] = 4
+        # it means that using stem 0 on block 5 is exactly the same as attaching block 4 with its first stem
+
         self.translation_table = {}
-        for blockidx in range(len(self.block_mols)):
-            # Blocks have multiple ways of being attached. By default,
-            # a new block is attached to the target stem by attaching
-            # it's kth atom, where k = block_rs[new_block_idx][0].
-            # When computing a reverse action (from a parent), we may
-            # wish to attach the new block to a different atom. In
-            # the blocks library, there are duplicates of the same
-            # block but with block_rs[block][0] set to a different
-            # atom. Thus, for the reverse action we have to find out
-            # which duplicate this corresponds to.
 
-            # Here, we compute, for block blockidx, what is the index
-            # of the duplicate block, if someone wants to attach to
-            # atom x of the block.
-            # So atom_map[x] == bidx, such that block_rs[bidx][0] == x
+        # since symmetry is obtained by duplicating blocks and rearranging the stems in block_r
+        # e.g. block 4, 5 and 6 all have the same smiles string "C1CCNCC1"
+        # however 
+        # self.block_rs[4] = [0,3]
+        # self.block_rs[5] = [1,0,3]
+        # self.block_rs[6] = [3,0]
+        # by default when a new block is added to the molecule it is attached using stem self.block_rs[blockidx][0]
+
+        # the first entries in the translation table then be found using the following logic
+        # for each block_i from 0 to 104
+        # create an empty dict atom_map
+        # for each block_j with the same smiles string as block_i
+        # set atom_map[self.block_rs[block_j][0]] = block_j
+        # lastly set self.translation_table
+
+        # e.g. when block_i = 4
+        # smi1 == smi2, when block_j in {4,5,6}
+        # when block_j = 4
+        # atom_map[self.block_rs[4][0]]=atom_map[0]=4
+        # when block_j = 5
+        # atom_map[self.block_rs[5][0]]=atom_map[1]=5
+        # when block_j = 6
+        # atom_map[self.block_rs[6][0]]=atom_map[3]=6
+
+        # i.e. self.translation_table[4] = {0: 4, 1: 5, 3: 6}
+        # using stem 0 on block 4 is the same as using block 4 with the default stem
+        # using stem 1 on block 4 is the same as using block 5 with the default stem
+        # using stem 3 on block 4 is the same as using block 6 with the default stem
+
+        for block_i in range(len(self.block_smis)):
             atom_map = {}
-            for j in range(len(self.block_mols)):
-                if self.block_smis[blockidx] == self.block_smis[j]:
-                    atom_map[self.block_rs[j][0]] = j
-            self.translation_table[blockidx] = atom_map
+            for block_j in range(len(self.block_smis)):
+                smi1, smi2 = self.block_smis[block_i], self.block_smis[block_j]
 
-        # We're still missing some "duplicates", as some might be
-        # symmetric versions of each other. For example, block CC with
-        # block_rs == [0,1] has no duplicate, because the duplicate
-        # with block_rs [1,0] would be a symmetric version (both C
-        # atoms are the "same").
+                if smi1 == smi2:
+                    atom_map[self.block_rs[block_j][0]] = block_j
 
-        # To test this, let's create nonsense molecules by attaching
-        # duplicate blocks to a Gold atom, and testing whether they
-        # are the same.
+            self.translation_table[block_i] = atom_map
+        
         print(self.translation_table)
-        print("")
-        gold = Chem.MolFromSmiles('[Au]')
-        # If we find that two molecules are the same when attaching
-        # them with two different atoms, then that means the atom
-        # numbers are symmetries. We can add those to the table.
-        for blockidx in range(len(self.block_mols)):
-            for j in self.block_rs[blockidx]:
-                if j not in self.translation_table[blockidx]:
-                    symmetric_duplicate = None
-                    for atom, block_duplicate in self.translation_table[blockidx].items():
-                        molA, _ = chem.mol_from_frag(
-                            jbonds=[[0,1,0,j]],
-                            frags=[gold, self.block_mols[blockidx]])
-                        molB, _ = chem.mol_from_frag(
-                            jbonds=[[0,1,0,atom]],
-                            frags=[gold, self.block_mols[blockidx]])
-                        if (Chem.MolToSmiles(molA) == Chem.MolToSmiles(molB) or
-                            molA.HasSubstructMatch(molB)):
-                            symmetric_duplicate = block_duplicate
-                            break
-                    if symmetric_duplicate is None:
-                        raise ValueError('block', blockidx, self.block_smis[blockidx],
-                                         'has no duplicate for atom', j,
-                                         'in position 0, and no symmetrical correspondance')
-                    self.translation_table[blockidx][j] = symmetric_duplicate
-                    print(blockidx,j,symmetric_duplicate)
-                    #print('block', blockidx, '+ atom', j,
-                    #      'in position 0 is a symmetric duplicate of',
-                    #      symmetric_duplicate)
-        print(self.translation_table)
+
+        # some duplicates will still be missing 
+        # e.g CC has block_r = [0,1]
+        # however no duplicate exist in the blocks list since attaching to either makes
+        # no difference symmetrically
+
+        # in order to discover these duplicates we build on top on some base molecule
+        mol = Chem.MolFromSmiles("Ir")
+        for block_i in range(len(self.block_mols)):
+            # get default stem for first block
+            stem1 = self.block_rs[block_i][0]
+            for block_j in range(len(self.block_mols)):
+                for stem
+                # get default stem for second block
+                stem2 = self.block_rs[block_j][0]
+
+                # check that the block does not already exist in the translation table
+                if stem2 not in self.build_translation_table[block_i].keys():
+                    # create junction bond for the first molecule
+                    jbond1 = [0,1,0,stem1]
+                    mol1,_ = chem.mol_from_frag(jbonds=[jbond1],frags=[mol,self.block_mols[block_i]])
+
+                    # create junction bond for the second molecule
+                    jbond2= [0,1,0,stem2]
+                    mol2,_ = chem.mol_from_frag(jbonds=[jbond2],frags=[mol,self.block_mols[block_j]])
+
+                    # check if the to molecules are identical
+                    if Chem.MolToSmiles(mol1) == Chem.MolToSmiles(mol2) or mol1.HasSubtructMatch(mol2):
+                        
+
+
+
+        
 
 # class that defines a specific molecule
 class BlockMolecule:
