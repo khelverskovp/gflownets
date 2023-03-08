@@ -31,8 +31,9 @@ class BlockDictionary:
 
         # define colors for molecule plots
         # i.e. highlighting colors of bonds
-        self.colors = ["red","green","blue","orange","purple","pink","cyan","olive"]
-    
+        # self.colors = ["red","green","blue","orange","purple","pink","cyan","olive"]
+        self.colors = ["yellow","lightgreen"]
+
     def build_translation_table(self):
         """
         build translation table for symmetrical attachments to molecules.
@@ -200,7 +201,7 @@ class BlockMolecule:
 
         return chem.mol_from_frag(self.jbonds, frags=self.blocks)
     
-    def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False) -> None:
+    def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False, figsize=(500,500)) -> None:
         """
         params:
         name: filename
@@ -213,7 +214,8 @@ class BlockMolecule:
         nbonds = len(bonds)
 
         # create drawing surface
-        d = rdMolDraw2D.MolDraw2DCairo(500, 500)
+        h, w = figsize
+        d = rdMolDraw2D.MolDraw2DCairo(h, w)
 
         # check highlighting condition
 
@@ -270,7 +272,7 @@ if __name__ == "__main__":
     
     # build molecule
     # choose molecules to add
-    block_list = [0,1,2,3]
+    block_list = [12]
 
     for block in block_list:
         try:
@@ -284,8 +286,8 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    filename = "NewMolecule"
-    molecule.draw_mol_to_file(filename,highlightBonds=True)
+    filename = "NewMolecule3"
+    molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
 
     # bdict = molecule.bdict
 
