@@ -6,6 +6,7 @@ from rdkit.Chem.rdchem import Mol
 import numpy as np
 from typing import List
 from matplotlib.colors import ColorConverter
+import os
 
 import chem
 
@@ -97,10 +98,9 @@ class BlockDictionary:
         # in order to discover these duplicates we build on top on some base molecule
         mol = Chem.MolFromSmiles("Ir")
         for block_i in range(len(self.block_mols)):
-            # get default stem for first block
+            # loop over all possible stems in the block
             stem1 = self.block_rs[block_i][0]
             for block_j in range(len(self.block_mols)):
-                for stem
                 # get default stem for second block
                 stem2 = self.block_rs[block_j][0]
 
@@ -116,6 +116,7 @@ class BlockDictionary:
 
                     # check if the to molecules are identical
                     if Chem.MolToSmiles(mol1) == Chem.MolToSmiles(mol2) or mol1.HasSubtructMatch(mol2):
+                        pass
                         
 
 
@@ -259,6 +260,7 @@ class BlockMolecule:
         
         # save image to file
         path = f'reports/figures/molecules/builds/'
+        os.makedirs(path,exist_ok=True)
         filename = f'{name}.png'
         d.WriteDrawingText(path + filename)
 
@@ -266,9 +268,13 @@ if __name__ == "__main__":
     bpath = "data/raw/blocks_PDB_105.json"
     molecule = BlockMolecule(bpath=bpath)
     
-    """ for i in range(4):
+    # build molecule
+    # choose molecules to add
+    block_list = [0,1,2,3]
+
+    for block in block_list:
         try:
-            molecule.add_block(np.random.randint(0,105))
+            molecule.add_block(block)
         except:
             break
 
@@ -278,11 +284,12 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    molecule.draw_mol_to_file("marcus",highlightBonds=True) """
+    filename = "NewMolecule"
+    molecule.draw_mol_to_file(filename,highlightBonds=True)
 
-    bdict = molecule.bdict
+    # bdict = molecule.bdict
 
-    bdict.build_translation_table()
+    # bdict.build_translation_table()
 
     
 
