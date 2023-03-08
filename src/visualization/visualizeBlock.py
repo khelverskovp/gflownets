@@ -68,7 +68,7 @@ class VisualizerBlock:
         for idx in range(len(self.block_smis)):
             self.visualizeBlockWithDefaultStem(idx,figsize=(300,150))
 
-            path = f'{self.out_dir}stems/block{idx}.png'
+            path = f'{self.out_dir}default_stems/block{idx}.png'
             img = mpimg.imread(path)
         
             ax[idx // 15, idx % 15].imshow(img)
