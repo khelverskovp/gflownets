@@ -35,23 +35,19 @@ def main(input_filepath):
     # load smile names and attachment points
     block_rs = blocks["block_r"].to_list()
 
-    #print(sum(df["dockscore"][df["dockscore"] <= 0]) / len(df["dockscore"]))
-    idx = -1
-    """ for i, bids in enumerate(df["blockidxs"]):
-        if len(bids) == 2:
-            if len(block_rs[bids[0]]) > 1 and len(block_rs[bids[1]]) > 1:
-                idx = i
-                break """
-    for i, bids in enumerate(df["blockidxs"]):
-        if len(np.unique(bids)) != len(bids):
-            idx = i
-            break
-    print(idx)
-    print(df.iloc[idx])
+    """ for i in range(len(df.smiles)):
+        done = False
+        for j in range(i+1,len(df.smiles)):
+            if df.smiles[i] == df.smiles[j]:
+                print(df.iloc[i])
+                print(df.iloc[j])
+                done = True
+                break
+        if done:
+            break """
 
-        
-
-
+    print(df.iloc[59])
+    print(df.iloc[605])
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

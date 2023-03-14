@@ -32,7 +32,8 @@ class BlockDictionary:
         # define colors for molecule plots
         # i.e. highlighting colors of bonds
         # self.colors = ["red","green","blue","orange","purple","pink","cyan","olive"]
-        self.colors = ["yellow","lightgreen"]
+        # self.colors = ["yellow","lightgreen"]
+        self.colors = ["yellow","lightgreen","orange"]
 
     def build_translation_table(self):
         """
@@ -188,9 +189,9 @@ class BlockMolecule:
     
     def get_smiles(self) -> List[str]:
         """
-        returns list of smiles string for the blocks in the molecule
+        returns smiles string for the molecule
         """
-        return [self.bdict.block_smis[idx] for idx in self.blockidxs]
+        return Chem.MolToSmiles(self.get_mol_from_jbonds()[0])
 
 
     def get_mol_from_jbonds(self) -> Mol:
@@ -208,7 +209,7 @@ class BlockMolecule:
         """
 
         # retrieve mol in rdkit format as well as bonds
-        mol,bonds = molecule.get_mol_from_jbonds()
+        mol,bonds = self.get_mol_from_jbonds()
         
         # number of bonds
         nbonds = len(bonds)
@@ -272,7 +273,7 @@ if __name__ == "__main__":
     
     # build molecule
     # choose molecules to add
-    block_list = [12]
+    block_list = [91, 29, 48, 95]
 
     for block in block_list:
         try:
@@ -280,13 +281,15 @@ if __name__ == "__main__":
         except:
             break
 
-    
+    molecule.jbonds = [[0, 1, 3, 0], [0, 2, 6, 4], [2, 3, 0, 3]]
+
+    print(f"smiles: {molecule.get_smiles()}")
     print(f"blockidxs: {molecule.blockidxs}")
     print(f"slices: {molecule.slices}")
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    filename = "NewMolecule3"
+    filename = "ZINC4_bonds"
     molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
 
     # bdict = molecule.bdict

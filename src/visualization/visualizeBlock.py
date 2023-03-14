@@ -81,7 +81,11 @@ class VisualizerBlock:
 if __name__ == "__main__":
     visualizer = VisualizerBlock() 
 
-    visualizer.getAllBlocksWithDefaultStemPlot()
+    #visualizer.getAllBlocksWithDefaultStemPlot()
+
+    print(visualizer.block_smis[12])
+    print(visualizer.block_smis[23])
+    
 
     
 

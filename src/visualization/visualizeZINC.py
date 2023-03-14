@@ -41,34 +41,42 @@ class VisualizerZINC:
             self.visualizeMolecule(idx,subdir=subdir)
 
 
-visualizer = VisualizerZINC()  
+if __name__ == "__main__":
+    visualizer = VisualizerZINC()  
 
-min_length = 120
-max_length = 200
-n_mols = 1
+    visualizer.visualizeMolecule(239326)
+    visualizer.visualizeMolecule(77345)
 
-#visualizer.visualizeMolecules(min_length=min_length,max_length=max_length,n_mols=n_mols,subdir="big/")
-visualizer.visualizeMolecules(idxs=[22, 91, 33, 20, 42],subdir="general/")
+    """ min_length = 120
+    max_length = 200
+    n_mols = 1
 
-m = Chem.MolFromSmiles("O=S=O")
-# compute 2D structure
-_ = AllChem.Compute2DCoords(m)
-# draw to file
-path = f'reports/figures/test8.png'
+    #visualizer.visualizeMolecules(min_length=min_length,max_length=max_length,n_mols=n_mols,subdir="big/")
+    visualizer.visualizeMolecules(idxs=[22, 91, 33, 20, 42],subdir="general/")
 
-""" for i, atom in enumerate(m.GetAtoms()):
-    if i >= 12 and i < 21:
+    m = Chem.MolFromSmiles("O=S=O")
+    # compute 2D structure
+    _ = AllChem.Compute2DCoords(m)
+    # draw to file
+    path = f'reports/figures/test8.png'
+
+    Draw.MolToFile(m,path)
+
+    print(visualizer.df.iloc[39])
+
+    print(visualizer.df["jbonds"][39])
+
+    m = Chem.MolFromSmiles("c1ncc2nc[nH]c2n1")
+    for atom in m.GetAtoms():
         print(atom.GetAtomicNum()) """
+    
+    in_dir = "reports/figures/molecules/builds/"
 
-Draw.MolToFile(m,path)
+    #ms = [Chem.MolFromSmiles(smi) for smi in ["O=c1nc(-c2[nH]ncc2C2CC=CCC2)ccn1Cl","O=c1nc(Cl)ccn1-c1[nH]ncc1C1CC=CCC1"]]
 
-print(visualizer.df.iloc[39])
+    #for m in ms: tmp=AllChem.Compute2DCoords(m)
 
-print(visualizer.df["jbonds"][39])
-
-m = Chem.MolFromSmiles("c1ncc2nc[nH]c2n1")
-for atom in m.GetAtoms():
-    print(atom.GetAtomicNum())
+    #for i, m in enumerate(ms): Draw.MolToFile(m,f'{in_dir}ZINC4_{i}.png')  
 
 
 
