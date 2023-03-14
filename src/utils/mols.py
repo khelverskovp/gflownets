@@ -12,14 +12,13 @@ import chem
 
 # keeps track of the domain of possible blocks
 class BlockDictionary:
-    def __init__(self, bpath: str) -> None:
-        """
-        :param bpath: path to json file with smiles block definitions
-         
-        """
+    # path to json file with smiles block definitions
+    bpath = "data/raw/blocks_PDB_105.json"
+
+    def __init__(self) -> None:
 
         # load block definitions from file
-        blocks = pd.read_json(bpath)
+        blocks = pd.read_json(self.bpath)
 
         # load smile names and attachment points
         self.block_smis = blocks["block_smi"].to_list()
@@ -96,29 +95,6 @@ class BlockDictionary:
         # e.g CC has block_r = [0,1]
         # however no duplicate exist in the blocks list since attaching to either makes
         # no difference symmetrically
-
-        # in order to discover these duplicates we build on top on some base molecule
-        mol = Chem.MolFromSmiles("Ir")
-        for block_i in range(len(self.block_mols)):
-            # loop over all possible stems in the block
-            stem1 = self.block_rs[block_i][0]
-            for block_j in range(len(self.block_mols)):
-                # get default stem for second block
-                stem2 = self.block_rs[block_j][0]
-
-                # check that the block does not already exist in the translation table
-                if stem2 not in self.build_translation_table[block_i].keys():
-                    # create junction bond for the first molecule
-                    jbond1 = [0,1,0,stem1]
-                    mol1,_ = chem.mol_from_frag(jbonds=[jbond1],frags=[mol,self.block_mols[block_i]])
-
-                    # create junction bond for the second molecule
-                    jbond2= [0,1,0,stem2]
-                    mol2,_ = chem.mol_from_frag(jbonds=[jbond2],frags=[mol,self.block_mols[block_j]])
-
-                    # check if the to molecules are identical
-                    if Chem.MolToSmiles(mol1) == Chem.MolToSmiles(mol2) or mol1.HasSubtructMatch(mol2):
-                        pass
                         
 
 
@@ -127,14 +103,9 @@ class BlockDictionary:
 
 # class that defines a specific molecule
 class BlockMolecule:
-    def __init__(self, bpath: str) -> None:
-        """
-        :param bpath: path to json file with smiles block definitions
-         
-        """
-
+    def __init__(self) -> None:
         # block dictionary
-        self.bdict = BlockDictionary(bpath)
+        self.bdict = BlockDictionary()
 
         # defining characteristics of a molecule
         self.blockidxs = []  # index of the block in the blocks dictionary
@@ -144,7 +115,7 @@ class BlockMolecule:
         self.stems = []       # possible bond attachment points for the molecule
         self.numblocks = 0    # number of blocks in the molecule
     
-    def add_block(self, blockidx: int, stemidx: int=0) -> None:
+    def add_block(self, blockidx: int, stemidx: int) -> None:
         # ensure that we can actually add a block to the molecule
         assert (self.numblocks == 0 or len(self.stems) > 0), "No open stems! Cannot add block to molecule" 
 
@@ -200,7 +171,7 @@ class BlockMolecule:
         return: molecule in rdkit.Chem.rdchem.Mol form
         """
 
-        return chem.mol_from_frag(self.jbonds, frags=self.blocks)
+        return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
     
     def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False, figsize=(500,500)) -> None:
         """
@@ -267,9 +238,32 @@ class BlockMolecule:
         filename = f'{name}.png'
         d.WriteDrawingText(path + filename)
 
+
+class MoleculeMDP:
+    def __init__(self):
+        self.molecule = BlockMolecule()
+
+    def add_block(self, blockidx: int, stemidx: int=0) -> None:
+        self.molecule.add_block(blockidx=blockidx,stemidx=stemidx)
+
+    
+    def parents(self):
+        # compute the in-degree for each block in the molecule
+        # initialize to zero
+        in_degree = {i: 0 for i in range(self.molecule.numblocks)}
+        for (block1, block2, _, _) in self.molecule.jbonds:
+            in_degree[block1] += 1
+            in_degree[block2] += 1
+        
+        # if the in_degree is larger than 1 the block can not have been 
+        
+    
+
+    
+
+
 if __name__ == "__main__":
-    bpath = "data/raw/blocks_PDB_105.json"
-    molecule = BlockMolecule(bpath=bpath)
+    molecule = BlockMolecule()
     
     # build molecule
     # choose molecules to add
@@ -295,6 +289,7 @@ if __name__ == "__main__":
     # bdict = molecule.bdict
 
     # bdict.build_translation_table()
+    
 
     
 
