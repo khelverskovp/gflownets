@@ -283,26 +283,34 @@ class BlockMolecule:
         deletes blocks from the molecule
         """
         mask = np.ones(self.numblocks,dtype=bool)
-        mask = mask[blockidx] = 0
+        mask[blockidx] = 0
 
         # update blockidxs
-        self.blockidxs = self.blockidxs[mask]
+        self.blockidxs = np.array(self.blockidxs)[mask]
 
         # update blocks
-        self.blocks = self.blocks[mask]
+        self.blocks = np.array(self.blocks)[mask]
 
         # update numblocks
         self.numblocks = self.numblocks - 1
 
         # update slices
-        nr_atoms = self.bdict.block_natoms[blockidx]
+        nr_atoms = [self.bdict.block_natoms[bidx] for bidx in self.blockidxs]
         self.slices = [0] + list(np.cumsum(nr_atoms))
 
         # update jbonds
         reindex = np.cumsum(mask) - 1
         jbonds = []
+        r_stem = []
+        free_stem = []
         for (block1, block2, stem1, stem2) in self.jbonds:
-            if block1 == blockidx or block2 == blockidx:
+            if block1 == blockidx:
+                r_stem = [block1, stem1]
+                free_stem = [reindex[block2], stem2]
+                continue
+            elif block2 == blockidx:
+                r_stem = [block2, stem2]
+                free_stem = [reindex[block1], stem1]
                 continue
             jbonds.append([reindex[block1], reindex[block2], stem1, stem2])
         self.jbonds = jbonds
@@ -314,6 +322,9 @@ class BlockMolecule:
                 continue
             stems.append([reindex[block], stem])
         self.stems = stems
+        self.stems.append(free_stem)
+
+        return r_stem
 
         
 
@@ -404,18 +415,26 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
+    molecule.delete_block_with_degree_one(1)
+
+    print(f"smiles: {molecule.get_smiles()}")
+    print(f"blockidxs: {molecule.blockidxs}")
+    print(f"slices: {molecule.slices}")
+    print(f"jbonds: {molecule.jbonds}")
+    print(f"stems: {molecule.stems}")
+
     # filename = "ZINC4_bonds"
     # molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
 
-    bdict = molecule.bdict
+    #bdict = molecule.bdict
     
     # bdict.build_translation_table()
 
-    mdp = MoleculeMDP()
+    #mdp = MoleculeMDP()
 
-    mdp.molecule = molecule
+    #mdp.molecule = molecule
 
-    mdp.parents()
+    #mdp.parents()
 
     # mdp.molecule = BlockMolecule()
 
