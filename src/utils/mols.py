@@ -266,6 +266,47 @@ class BlockMolecule:
         os.makedirs(path,exist_ok=True)
         filename = f'{name}.png'
         d.WriteDrawingText(path + filename)
+    
+    def delete_block_with_degree_one(self,blockidx: int) -> None:
+        """
+        deletes blocks from the molecule
+        """
+        mask = np.ones(self.numblocks,dtype=bool)
+        mask = mask[blockidx] = 0
+
+        # update blockidxs
+        self.blockidxs = self.blockidxs[mask]
+
+        # update blocks
+        self.blocks = self.blocks[mask]
+
+        # update numblocks
+        self.numblocks = self.numblocks - 1
+
+        # update slices
+        nr_atoms = self.bdict.block_natoms[blockidx]
+        self.slices = [0] + list(np.cumsum(nr_atoms))
+
+        # update jbonds
+        reindex = np.cumsum(mask) - 1
+        jbonds = []
+        for (block1, block2, stem1, stem2) in self.jbonds:
+            if block1 == blockidx or block2 == blockidx:
+                continue
+            jbonds.append([reindex[block1], reindex[block2], stem1, stem2])
+        self.jbonds = jbonds
+
+        # update stems
+        stems = []
+        for (block, stem) in self.stems:
+            if block == blockidx:
+                continue
+            stems.append([reindex[block], stem])
+        self.stems = stems
+
+        
+
+
 
 
 class MoleculeMDP:
