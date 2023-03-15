@@ -88,18 +88,47 @@ class BlockDictionary:
                     atom_map[self.block_rs[block_j][0]] = block_j
 
             self.translation_table[block_i] = atom_map
-        
-        print(self.translation_table)
 
         # some duplicates will still be missing 
         # e.g CC has block_r = [0,1]
         # however no duplicate exist in the blocks list since attaching to either makes
         # no difference symmetrically
+
+        # now we find symmetric duplicates by starting from a random molecule Ir and continually building two molecles mol1 and mol2
+        # if mol1 and mol2 are the same then we have found a symmetric duplicate and we add it to the translation table
+        base_mol = Chem.MolFromSmiles("[Ir]")
+        # we loop over all blocks
+        for block_i in range(len(self.block_smis)):
+            # loop over all stems of the block
+            for j in self.block_rs[block_i]:
+                # if the stem is already in the translation table we dont need to do anything
+                if j not in self.translation_table[block_i].keys():
+                    symmetric_dubplicate = None
+                    # loop over stems and blockidx in the translation table for the block
+                    for stem, block in self.translation_table[block_i].items():
+                        # blocks is a list of the base molecule and the block we are checking in rdkit format
+                        blocks = [base_mol, self.block_mols[block_i]]
+                        # create mol1 by attaching block_i to base_mol using stem j
+                        # jbonds1 is [[0,1,0,j]] is the bond between mol and block_i using stem j
+                        jbonds1 = [[0,1,0,j]]
+                        mol1,_ = chem.mol_from_jbonds_and_blocks(jbonds1, blocks)  
+                        # create mol2 by attaching block_i to mol using stem stem
+                        # jbonds2 is [[0,1,0,stem]] is the bond between mol and block_i using stem, stem
+                        jbonds2 = [[0,1,0,stem]]
+                        mol2,_ = chem.mol_from_jbonds_and_blocks(jbonds2, blocks)
+
+                        # now we check if mol1 and mol2 are symmetric dubplicates 
+                        if Chem.MolToSmiles(mol1) == Chem.MolToSmiles(mol2) or mol1.HasSubstructMatch(mol2):
+                            # if they are we add the block to the translation table
+                            symmetric_dubplicate = block
+                            break
                         
-
-
-
-        
+                    if symmetric_dubplicate is None:
+                        # if we could not find a symmetric duplicate we raise an error. 
+                        raise ValueError("Could not find symmetric duplicate for block {} and stem {}".format(block_i, j))
+                    else:
+                        # else we add the symmetric duplicate to the translation table
+                        self.translation_table[block_i][j] = symmetric_dubplicate
 
 # class that defines a specific molecule
 class BlockMolecule:
@@ -115,7 +144,7 @@ class BlockMolecule:
         self.stems = []       # possible bond attachment points for the molecule
         self.numblocks = 0    # number of blocks in the molecule
     
-    def add_block(self, blockidx: int, stemidx: int) -> None:
+    def add_block(self, blockidx: int, stemidx: int=0) -> None:
         # ensure that we can actually add a block to the molecule
         assert (self.numblocks == 0 or len(self.stems) > 0), "No open stems! Cannot add block to molecule" 
 
@@ -286,9 +315,9 @@ if __name__ == "__main__":
     filename = "ZINC4_bonds"
     molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
 
-    # bdict = molecule.bdict
+    bdict = molecule.bdict
 
-    # bdict.build_translation_table()
+    bdict.build_translation_table()
     
 
     
