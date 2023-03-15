@@ -144,6 +144,17 @@ class BlockMolecule:
         self.stems = []       # possible bond attachment points for the molecule
         self.numblocks = 0    # number of blocks in the molecule
     
+    # make copy of existing molecule
+    def copy(self):
+        new_mol = BlockMolecule()
+        new_mol.blockidxs = self.blockidxs.copy()
+        new_mol.blocks = self.blocks.copy()
+        new_mol.slices = self.slices.copy()
+        new_mol.jbonds = self.jbonds.copy()
+        new_mol.stems = self.stems.copy()
+        new_mol.numblocks = self.numblocks
+        return new_mol
+
     def add_block(self, blockidx: int, stemidx: int=0) -> None:
         # ensure that we can actually add a block to the molecule
         assert (self.numblocks == 0 or len(self.stems) > 0), "No open stems! Cannot add block to molecule" 
@@ -199,7 +210,7 @@ class BlockMolecule:
         represents the molecule in rdkit.Chem format
         return: molecule in rdkit.Chem.rdchem.Mol form
         """
-
+        print(self.blocks)
         return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
     
     def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False, figsize=(500,500)) -> None:
@@ -312,25 +323,65 @@ class BlockMolecule:
 class MoleculeMDP:
     def __init__(self):
         self.molecule = BlockMolecule()
+        # initialize translation table
+        self.translation_table = self.molecule.bdict.build_translation_table()
 
     def add_block(self, blockidx: int, stemidx: int=0) -> None:
         self.molecule.add_block(blockidx=blockidx,stemidx=stemidx)
 
     
     def parents(self):
-        # compute the in-degree for each block in the molecule
+        """
+            return a list of parent states
+            [(parent_molecule in BlockMolecule format, (blockidx, stemidx)),...]
+            blockidx: index of block that should be added to the parent to get the current state
+            stemidx: stemidx in parent_molecule.stems that the block should connect with
+
+            inspired by code from the github of Bengio
+        """
+
+
+        # if the molecule exist of the only one block there exist only one parent state
+        if self.molecule.numblocks == 1:
+            return [(BlockMolecule(), (self.molecule.blockidxs[0],0))]
+
+        # compute the degree for each block in the molecule
         # initialize to zero
-        in_degree = {i: 0 for i in range(self.molecule.numblocks)}
+        degree = {i: 0 for i in range(self.molecule.numblocks)}
         for (block1, block2, _, _) in self.molecule.jbonds:
-            in_degree[block1] += 1
-            in_degree[block2] += 1
+            degree[block1] += 1
+            degree[block2] += 1
         
-        # if the in_degree is larger than 1 the block can not have been 
+        # if the degree is larger than 1 the block can not have been added in the previous step
+        # only look at blocks with degree 1
+        removed_blocks = [idx for idx, deg in degree.items() if deg == 1] 
         
-    
+        # store parents in list
+        parent_mols = []
 
-    
+        # loop over all the blocks we can infer parent states from
+        for ridx in removed_blocks:
+            # create a new instance of the molecule
+            new_mol = self.molecule.copy()
 
+            # delete the block from new_mol
+            removed_stem = new_mol.delete_block_with_degree_one(ridx)
+
+            # get block index from the deleted block which is still stored in the original self.molecule
+            blockidx = self.molecule.blockidxs[ridx]
+
+            # when the block was deleted from the molecule the stem it was attached to was placed in the end of new_mol.stems
+            stemidx = len(new_mol.stems) - 1
+
+            # define parent
+            parent = [new_mol, (self.translation_table[blockidx][removed_stem[1]], stemidx)]
+
+            # add to list of parents
+            parent_mols.append(parent)
+            
+
+        return parent_mols
+            
 
 if __name__ == "__main__":
     molecule = BlockMolecule()
@@ -353,13 +404,26 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    filename = "ZINC4_bonds"
-    molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
+    # filename = "ZINC4_bonds"
+    # molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
 
     bdict = molecule.bdict
-
-    bdict.build_translation_table()
     
+    # bdict.build_translation_table()
+
+    mdp = MoleculeMDP()
+
+    mdp.molecule = molecule
+
+    mdp.parents()
+
+    # mdp.molecule = BlockMolecule()
+
+    # mdp.add_block(29)
+
+    # print(mdp.parents())
+
+
 
     
 
