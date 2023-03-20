@@ -9,6 +9,8 @@ from matplotlib.colors import ColorConverter
 import os
 
 import chem
+from torch_geometric.data import Data
+import torch
 
 # keeps track of the domain of possible blocks
 class BlockDictionary:
@@ -147,6 +149,12 @@ class BlockMolecule:
         self.jbonds = []      # junction bonds: [block1, block2, atomidxblock1, atomidxblock2] 
         self.stems = []       # possible bond attachment points for the molecule
         self.numblocks = 0    # number of blocks in the molecule
+
+        # number of features in atomic graph representation
+        # first 6 elements are used for typeidx, next 8 elements are for other features (e.g hybridization type),
+        # remaining 56 elements represents an onehot encoded version of the molecule with the first 56 atoms in the periodic table
+        # 6 + 8 + 56 = 70
+        self.atom_nfeatures = 70
     
     # make copy of existing molecule
     def copy(self):
@@ -328,8 +336,16 @@ class BlockMolecule:
         self.stems.append(free_stem)
 
         return r_stem
+    
+    def to_atom_graph(self):
+        #check if the molecule is not empty
+        if len(self.blockidxs) == 0:
+            # g is a graph with no nodes and no edges in torch geometric format (Data)
+            g = Data(x=torch.zeros((1, self.atom_nfeatures)),
+                 edge_attr=torch.zeros((4,0)),
+                 edge_index=torch.zeros((2, 0)).long())
 
-        
+        return g
 
 
 
@@ -395,12 +411,21 @@ class MoleculeMDP:
             
 
         return parent_mols
+    
+
+    
+    
             
 
 if __name__ == "__main__":
     molecule = BlockMolecule()
+
+    print(molecule.mol_to_atom_graph().x)
+    print(molecule.mol_to_atom_graph().edge_index.shape)
+    print(molecule.mol_to_atom_graph().edge_attr.shape)
+    print(molecule.mol_to_atom_graph().edge_index)
     
-    # build molecule
+    """ # build molecule
     # choose molecules to add
     block_list = [91, 29, 48, 95]
 
@@ -470,7 +495,7 @@ if __name__ == "__main__":
         org_mol.draw_mol_to_file(name=f"test{c}",highlightBonds=True)
         c += 1
 
-
+ """
     # sanity check
 
     # mdp.molecule = BlockMolecule()
