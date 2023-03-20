@@ -156,6 +156,15 @@ class BlockMolecule:
         # 6 + 8 + 56 = 70
         self.atom_nfeatures = 70
     
+    @property
+    def stem_atmidxs(self):
+        stems = np.asarray(self.stems)
+        if stems.shape[0]==0:
+            stem_atmidxs = np.array([])
+        else:
+            stem_atmidxs = np.asarray(self.slices)[stems[:,0]] + stems[:,1]
+        return stem_atmidxs
+    
     # make copy of existing molecule
     def copy(self):
         new_mol = BlockMolecule()
@@ -342,8 +351,22 @@ class BlockMolecule:
         if len(self.blockidxs) == 0:
             # g is a graph with no nodes and no edges in torch geometric format (Data)
             g = Data(x=torch.zeros((1, self.atom_nfeatures)),
-                 edge_attr=torch.zeros((4,0)),
-                 edge_index=torch.zeros((2, 0)).long())
+                 edge_attr=torch.zeros((0,4)),
+                 edge_index=torch.zeros((0, 2)).long())
+        
+        stems = self.stem_atmidxs
+        if not len(stems):
+            stems = [0]
+        stem_mask = torch.zeros((g.x.shape[0], 1))
+        stem_mask[torch.tensor(stems).long()] = 1
+        g.stems = torch.tensor(stems).long()
+
+        g.x = torch.cat([g.x, stem_mask], 1).to('float64')
+
+        if g.edge_index.shape[0] == 0:
+            g.edge_index = torch.zeros((2, 1)).long()
+            g.edge_attr = torch.zeros((1, g.edge_attr.shape[1])).to('float64')
+            g.stems = torch.zeros((1,)).long()
 
         return g
 
