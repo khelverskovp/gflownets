@@ -17,6 +17,8 @@ torch
 torch_scatter
 torch-sparse
 torch-geometric
+pickle
+gzip
 
 # you must install pytables with conda
 
