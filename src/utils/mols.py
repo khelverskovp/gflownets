@@ -130,6 +130,10 @@ class BlockDictionary:
                         # else we add the symmetric duplicate to the translation table
                         self.translation_table[block_i][j] = symmetric_dubplicate
 
+    def get_translation_table(self):
+        self.build_translation_table()
+        return self.translation_table
+
 # class that defines a specific molecule
 class BlockMolecule:
     def __init__(self) -> None:
@@ -210,7 +214,6 @@ class BlockMolecule:
         represents the molecule in rdkit.Chem format
         return: molecule in rdkit.Chem.rdchem.Mol form
         """
-        print(self.blocks)
         return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
     
     def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False, figsize=(500,500)) -> None:
@@ -286,10 +289,10 @@ class BlockMolecule:
         mask[blockidx] = 0
 
         # update blockidxs
-        self.blockidxs = np.array(self.blockidxs)[mask]
+        self.blockidxs = list(np.array(self.blockidxs)[mask])
 
         # update blocks
-        self.blocks = np.array(self.blocks)[mask]
+        self.blocks = list(np.array(self.blocks)[mask])
 
         # update numblocks
         self.numblocks = self.numblocks - 1
@@ -335,7 +338,7 @@ class MoleculeMDP:
     def __init__(self):
         self.molecule = BlockMolecule()
         # initialize translation table
-        self.translation_table = self.molecule.bdict.build_translation_table()
+        self.translation_table = self.molecule.bdict.get_translation_table()
 
     def add_block(self, blockidx: int, stemidx: int=0) -> None:
         self.molecule.add_block(blockidx=blockidx,stemidx=stemidx)
@@ -415,13 +418,13 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    molecule.delete_block_with_degree_one(1)
+    #molecule.delete_block_with_degree_one(1)
 
-    print(f"smiles: {molecule.get_smiles()}")
-    print(f"blockidxs: {molecule.blockidxs}")
-    print(f"slices: {molecule.slices}")
-    print(f"jbonds: {molecule.jbonds}")
-    print(f"stems: {molecule.stems}")
+    #print(f"smiles: {molecule.get_smiles()}")
+    #print(f"blockidxs: {molecule.blockidxs}")
+    #print(f"slices: {molecule.slices}")
+    #print(f"jbonds: {molecule.jbonds}")
+    #print(f"stems: {molecule.stems}")
 
     # filename = "ZINC4_bonds"
     # molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
@@ -430,11 +433,45 @@ if __name__ == "__main__":
     
     # bdict.build_translation_table()
 
-    #mdp = MoleculeMDP()
+    mdp = MoleculeMDP()
+    print(mdp.translation_table)
 
-    #mdp.molecule = molecule
+    mdp.molecule = molecule
 
-    #mdp.parents()
+    print("")
+
+    print(mdp.parents())
+
+    print("")
+    
+    mdp.molecule.draw_mol_to_file(name="test1",highlightBonds=True)
+
+    c = 2
+
+    for mol, (blockidx, stemidx) in mdp.parents():
+        print("Parent")
+        print(f"smiles: {mol.get_smiles()}")
+        print(f"blockidxs: {mol.blockidxs}")
+        print(f"slices: {mol.slices}")
+        print(f"jbonds: {mol.jbonds}")
+        print(f"stems: {mol.stems}")
+        print("")
+        mol.draw_mol_to_file(name=f"parent{c}",highlightBonds=True)
+        c += 1
+        org_mol = mol.copy()
+        org_mol.add_block(blockidx=blockidx,stemidx=stemidx)
+        print("Original")
+        print(f"smiles: {org_mol.get_smiles()}")
+        print(f"blockidxs: {org_mol.blockidxs}")
+        print(f"slices: {org_mol.slices}")
+        print(f"jbonds: {org_mol.jbonds}")
+        print(f"stems: {org_mol.stems}")
+        print("")
+        org_mol.draw_mol_to_file(name=f"test{c}",highlightBonds=True)
+        c += 1
+
+
+    # sanity check
 
     # mdp.molecule = BlockMolecule()
 
