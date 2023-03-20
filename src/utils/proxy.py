@@ -37,9 +37,6 @@ class MPNNet_Atom(nn.Module):
 
         self.lin = nn.Linear(dim * 2, num_out_per_mol)
 
-
-
-
     def forward(self, graph, do_dropout=False):
         out = self.act(self.lin0(graph.x))
         h = out.unsqueeze(0)
@@ -62,7 +59,7 @@ class MPNNet_Atom(nn.Module):
         return per_mol_out
 
 class Proxy:
-    proxy_path = 'models\pretrained_proxy'
+    proxy_path = 'models/pretrained_proxy'
 
     def __init__(self, device) -> None:
         eargs = pickle.load(gzip.open(f'{self.proxy_path}/info.pkl.gz'))['args']
@@ -93,3 +90,10 @@ class Proxy:
         return self.proxy(mol).item()
         
     
+if __name__ == "__main__":
+    molecule = MoleculeMDP()
+    device = torch.device("cpu")
+
+    proxy = Proxy(device=device)
+
+    print(proxy(molecule))
