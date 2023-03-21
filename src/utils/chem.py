@@ -14,7 +14,7 @@ def mol_from_jbonds_and_blocks(jbonds, blocks=None, block_smis=None):
     
     return: molecule in rdkit.Chem.rdchem.Mol form
     """
-
+    
     # change junction bonds to numpy array
     jun_bonds = np.asarray(jbonds)
 
