@@ -45,7 +45,8 @@ def main(input_filepath):
                 break
         if done:
             break """
-
+    df.dockscore[df.dockscore > 0] = 0
+    print(np.mean(df.dockscore[df.dockscore < 0]), np.std(df.dockscore[df.dockscore < 0]))
     print(df.iloc[59])
     print(df.iloc[605])
 

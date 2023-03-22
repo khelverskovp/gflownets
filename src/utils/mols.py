@@ -3,16 +3,25 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, Draw
 from rdkit.Chem.Draw import rdMolDraw2D
 from rdkit.Chem.rdchem import Mol
+from rdkit.Chem.rdchem import BondType as BT
+from rdkit.Chem.rdchem import HybridizationType
+from rdkit import RDConfig
+from rdkit.Chem import ChemicalFeatures
 import numpy as np
 from typing import List
 from matplotlib.colors import ColorConverter
 import os
 
 import chem
-from torch_geometric.data import Data
+from torch_geometric.data import Data, Batch
 import torch
 
+from chem import atomic_numbers
+
 # keeps track of the domain of possible blocks
+# cache to store library for features such as acceptor and donor characteristics
+_mpnn_feat_cache = [None]
+
 class BlockDictionary:
     # path to json file with smiles block definitions
     bpath = "data/raw/blocks_PDB_105.json"
@@ -165,7 +174,7 @@ class BlockMolecule:
         # first 6 elements are used for typeidx, next 8 elements are for other features (e.g hybridization type),
         # remaining 56 elements represents an onehot encoded version of the molecule with the first 56 atoms in the periodic table
         # 6 + 8 + 56 = 70
-        self.atom_nfeatures = 70
+        self.atom_nfeatures = 6 + 8 + len(chem.atomic_numbers)
     
     @property
     def stem_atmidxs(self):
@@ -225,24 +234,23 @@ class BlockMolecule:
             jbond = [block1,block2,stem1,stem2]
             self.jbonds.append(jbond)
             self.stems.pop(stemidx)
-
-    def remove_jbond(self,jbond_idx = None) -> None:
-        """"""
-        pass
     
     def get_smiles(self) -> List[str]:
         """
         returns smiles string for the molecule
         """
-        return Chem.MolToSmiles(self.mol_to_rdkit()[0])
+        return Chem.MolToSmiles(self.mol_to_rdkit())
 
 
-    def mol_to_rdkit(self) -> Mol:
+    def mol_to_rdkit(self, return_bonds=False) -> Mol:
         """
         represents the molecule in rdkit.Chem format
         return: molecule in rdkit.Chem.rdchem.Mol form
         """
-        return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
+        if return_bonds:
+            chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
+
+        return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)[0]
     
     def draw_mol_to_file(self,name: str="test", highlightBonds: bool=False, figsize=(500,500)) -> None:
         """
@@ -251,7 +259,7 @@ class BlockMolecule:
         """
 
         # retrieve mol in rdkit format as well as bonds
-        mol,bonds = self.mol_to_rdkit()
+        mol,bonds = self.mol_to_rdkit(return_bonds=True)
         
         # number of bonds
         nbonds = len(bonds)
@@ -357,28 +365,147 @@ class BlockMolecule:
 
         return r_stem
     
-    def to_atom_graph(self):
-        #check if the molecule is not empty
-        if len(self.blockidxs) == 0:
-            # g is a graph with no nodes and no edges in torch geometric format (Data)
-            g = Data(x=torch.zeros((1, self.atom_nfeatures)),
-                 edge_attr=torch.zeros((0,4)),
-                 edge_index=torch.zeros((0, 2)).long())
+    # code is taken from https://github.com/GFNOrg/gflownet/blob/master/mols/utils/chem.py
+    # comments are written by us
+    def mpnn_feat(self):
+        """
+            returns atom and bond features in encoded format for the mpnn network
+
+            the feature vector will have size (natoms, 70)
+
+            for each atom in the molecule a one hot encoded vector of size 70 exists
+            index 0: 1 if atom is H otherwise 0
+            index 1: 1 if atom is C otherwise 0
+            index 2: 1 if atom is N otherwise 0
+            index 3: 1 if atom is O otherwise 0
+            index 4: 1 if atom is F otherwise 0
+            index 5: 1 if index 0-4 is 0 otherwise 1
+            index 7: 1 if atom is acceptor otherwise 0
+            index 8: 1 if atom is donor otherwise 0
+            index 9: 1 if the atom is part of an aromatic ring otherwise 0
+            index 10: 1 if atom is part of sp hybridization otherwise 0
+            index 11: 1 if atom is part of sp2 hybridization otherwise 0
+            index 12: 1 if atom is part of sp3 hybridzation otherwise 0
+            index 13: number of hydrogen atoms connected to the atom
+            index 14-69: onehot encoded atom vector describing which atom is present
+            e.g. if index 15 is 1 it means that the atom is helium
+        """
+
+        # encode which main atoms and bonds are present
+        atomtypes = {'H': 0, 'C': 1, 'N': 2, 'O': 3, 'F': 4}
+        bondtypes = {BT.SINGLE: 0, BT.DOUBLE: 1, BT.TRIPLE: 2, BT.AROMATIC: 3, BT.UNSPECIFIED: 0}
+
+        # convert to rdkit format
+        rdmol = self.mol_to_rdkit()
+
+        # count number of atoms in the molecule
+        natm = len(rdmol.GetAtoms())
+        ntypes = len(atomtypes)
+
+        # number of features that appear in the encoded vector for each atom
+        nfeat = ntypes + 1 + 8 + len(atomic_numbers)
         
-        stems = self.stem_atmidxs
-        if not len(stems):
-            stems = [0]
+        # make embedding for each atom
+        atmfeat = np.zeros((natm, nfeat))
+
+        # featurize
+        for i, atom in enumerate(rdmol.GetAtoms()):
+            # check if the atom is in atomtypes otherwise set to 5
+            type_idx = atomtypes.get(atom.GetSymbol(), 5)
+            # set the corresponding index to 1
+            atmfeat[i, type_idx] = 1
+
+            # set index 9 to 1 if atom is aromatic
+            atmfeat[i, ntypes + 4] = atom.GetIsAromatic()
+
+            # onehot encode hybridization type accordingly (see description in top)
+            hybridization = atom.GetHybridization()
+            atmfeat[i, ntypes + 5] = hybridization == HybridizationType.SP
+            atmfeat[i, ntypes + 6] = hybridization == HybridizationType.SP2
+            atmfeat[i, ntypes + 7] = hybridization == HybridizationType.SP3
+
+            # set index 13 to number of hydrogen atoms attached
+            atmfeat[i, ntypes + 8] = atom.GetTotalNumHs(includeNeighbors=True)
+
+            # set the corresponding atom index in the one hot encoded vector to 1
+            # e.g. H has atomic num 1, which means that
+            # atmfeat[i,14] = 1 if the ith atom is hydrogen 
+            atmfeat[i, ntypes + 9 + atom.GetAtomicNum() - 1] = 1
+
+        # get donor and acceptor information
+        if _mpnn_feat_cache[0] is None:
+            # load feature library from rdkit if not stored in cache
+            fdef_name = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
+            factory = ChemicalFeatures.BuildFeatureFactory(fdef_name)
+            _mpnn_feat_cache[0] = factory
+        else:
+            factory = _mpnn_feat_cache[0]
+
+        # load features for the molecule
+        feats = factory.GetFeaturesForMol(rdmol)
+        for j in range(0, len(feats)):
+            if feats[j].GetFamily() == 'Acceptor':
+                # set index 7 for all acceptor atoms to 1
+                node_list = feats[j].GetAtomIds()
+                for k in node_list:
+                    atmfeat[k, ntypes + 2] = 1
+            elif feats[j].GetFamily() == 'Donor':
+                # set index 8 for all donor atoms to 1
+                node_list = feats[j].GetAtomIds()
+                for k in node_list:
+                    atmfeat[k, ntypes + 3] = 1
+            
+        # get bonds and bond features
+        bond = np.asarray([[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()] for bond in rdmol.GetBonds()])
+        # a list representing the type of each bond
+        # 0 -> single bond
+        # 1 -> double bond
+        # 2 -> triple bond
+        # 3 -> aromatic bond
+
+        bondfeat = [bondtypes[bond.GetBondType()] for bond in rdmol.GetBonds()]
+
+        # onehot encodes bond features
+        bondfeat = chem.onehot(bondfeat, num_classes=len(bondtypes) - 1)
+        
+        return atmfeat, bond, bondfeat
+
+    def to_atom_graph(self, floatX=torch.float):
+        # if the molecule is empty simply return an empty graph of zeroes
+        if len(self.blockidxs) == 0:
+            # Data class is used to represent as a graph
+            g = Data(x=torch.zeros((1, 14 + len(atomic_numbers))), 
+                     edge_attr=torch.zeros((0, 4)), 
+                     edge_index=torch.zeros((0, 2)).long())
+        else:
+            # atmfeat contains a onehot encoded vector for each atom in the molecule
+            # bond represents the starting and end atom indices for each junction bond
+            # bondfeat contains a onehot encoded vector for each bond in the molecule
+            # e.g. if bondfeat[0] = [0,1,0,0] it means that the first bond uses a double bond
+            atmfeat, bond, bondfeat = self.mpnn_feat()
+
+            # convert to torch geometric format
+            g = chem.mol_to_graph_backend(atmfeat, bond, bondfeat)
+
+        # get atom indices for atoms in self.stems
+        atoms_in_open_stems = self.stem_atmidxs
+        if not len(atoms_in_open_stems):
+            # if no open stems appear set the first value to 0
+            atoms_in_open_stems = [0]
+
+        # create stem mask which is initially 0 for all atoms
         stem_mask = torch.zeros((g.x.shape[0], 1))
-        stem_mask[torch.tensor(stems).long()] = 1
-        g.stems = torch.tensor(stems).long()
+        # becomes an additional feature to the onehot encoded atom vector
+        # at index 70 - 1 if the atom is an open stem otherwise 0
+        stem_mask[torch.tensor(atoms_in_open_stems).long()] = 1
 
-        g.x = torch.cat([g.x, stem_mask], 1).to('float64')
-
+        # add to g.x
+        g.x = torch.cat([g.x, stem_mask], 1).to(floatX)
+        
+        g.edge_attr = g.edge_attr.to(floatX)
         if g.edge_index.shape[0] == 0:
             g.edge_index = torch.zeros((2, 1)).long()
-            g.edge_attr = torch.zeros((1, g.edge_attr.shape[1])).to('float64')
-            g.stems = torch.zeros((1,)).long()
-
+            g.edge_attr = torch.zeros((1, g.edge_attr.shape[1])).to(floatX)
         return g
     
     def to_block_graph(self):
@@ -418,7 +545,6 @@ class BlockMolecule:
         
         #g.to(device) moves the data to the device (cpu or gpu)
         return g
-
 
 
 
@@ -487,6 +613,10 @@ class MoleculeMDP:
 
         return parent_mols
     
+    def mol_to_batch(self,mols):
+        batch = Batch.from_data_list(mols)
+        batch.to(self.device)
+        return batch
 
     
     
