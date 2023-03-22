@@ -36,6 +36,17 @@ class BlockDictionary:
         # self.colors = ["yellow","lightgreen"]
         self.colors = ["yellow","lightgreen","orange"]
 
+        # define the set of unique blocks and the length of the set
+        self.unique_block_set = sorted(set(self.block_smis))
+        self.n_unique_blocks = len(self.unique_block_set)
+
+        # define 
+        self.stem_type_offset = np.int32([0] + list(np.cumsum([max(self.block_rs[self.block_smis.index(smi)]) for smi in self.unique_block_set])))
+        self.n_stem_types = self.stem_type_offset[-1]
+
+        self.true_blockidx = [self.unique_block_set.index(smi) for smi in self.block_smis]
+
+
     def build_translation_table(self):
         """
         build translation table for symmetrical attachments to molecules.
@@ -369,6 +380,47 @@ class BlockMolecule:
             g.stems = torch.zeros((1,)).long()
 
         return g
+    
+    def to_block_graph(self):
+        # define lambda function to convert lists to torch tensors
+        f = lambda x: torch.tensor(x, dtype=torch.long, device='cpu')
+
+        # if the molecule is empty return...
+        if len(self.blockidxs) == 0:
+            g = Data(
+                x=f([self.bdict.n_unique_blocks]),
+                edge_index=f([[],[]]),
+                edge_attr=f(([])),
+                stems=f([(0,0)]),
+                stemtypes=f([self.bdict.n_stem_types]))
+            return g
+        
+        # else the molecule is not empty return...
+        # edges are equal to (block1,block2) for each bond in jbonds
+        edges = [(i[0],i[1]) for i in self.jbonds]
+
+        # unique blocks and stem_type_offset are used to convert the blockidxs to the correct block type
+        true_blocks = self.bdict.true_blockidx 
+        stem_offset = self.bdict.stem_type_offset
+
+        edge_attrs = [(stem_offset[unique_blocks[self.blockidxs[i[0]]]] + i[2],
+                       stem_offset[unique_blocks[self.blockidxs[i[1]]]] + i[3])
+                      for i in self.jbonds]
+    
+        stemtypes = [stem_offset[unique_blocks[self.blockidxs[i[0]]]] + i[1] for i in self.stems]
+
+        g = Data(
+            x=f([unique_blocks[i] for i in self.blockidxs]),
+            edge_index=f(edges).T if len(edges) > 0 else f([[],[]]),
+            edge_attr=f(edge_attrs) if len(edges) > 0 else f([]).reshape((0,2)),
+            stems=f(self.stems) if len(self.stems) > 0 else f([(0,0)]),
+            stemtypes=f(stemtypes) if len(self.stems) > 0 else f([self.bdict.n_stem_types]))
+        
+        #g.to(device) moves the data to the device (cpu or gpu)
+        return g
+
+
+
 
 
 
@@ -443,12 +495,7 @@ class MoleculeMDP:
 if __name__ == "__main__":
     molecule = BlockMolecule()
 
-    print(molecule.mol_to_atom_graph().x)
-    print(molecule.mol_to_atom_graph().edge_index.shape)
-    print(molecule.mol_to_atom_graph().edge_attr.shape)
-    print(molecule.mol_to_atom_graph().edge_index)
-    
-    """ # build molecule
+    # build molecule
     # choose molecules to add
     block_list = [91, 29, 48, 95]
 
@@ -466,66 +513,17 @@ if __name__ == "__main__":
     print(f"jbonds: {molecule.jbonds}")
     print(f"stems: {molecule.stems}")
 
-    #molecule.delete_block_with_degree_one(1)
+    print(f"to block graph: {molecule.to_block_graph()}")
+    print(f"to block graph x: {molecule.to_block_graph().x}")
+    print(f"to block graph edge_index: {molecule.to_block_graph().edge_index}")
+    print(f"to block graph edge_attr: {molecule.to_block_graph().edge_attr}")
+    print(f"to block graph stems: {molecule.to_block_graph().stems}")
+    print(f"to block graph stemtypes: {molecule.to_block_graph().stemtypes}")
 
-    #print(f"smiles: {molecule.get_smiles()}")
-    #print(f"blockidxs: {molecule.blockidxs}")
-    #print(f"slices: {molecule.slices}")
-    #print(f"jbonds: {molecule.jbonds}")
-    #print(f"stems: {molecule.stems}")
-
-    # filename = "ZINC4_bonds"
-    # molecule.draw_mol_to_file(filename,highlightBonds=True, figsize=(500,250))
-
-    #bdict = molecule.bdict
+ 
+   
     
-    # bdict.build_translation_table()
 
-    mdp = MoleculeMDP()
-    print(mdp.translation_table)
-
-    mdp.molecule = molecule
-
-    print("")
-
-    print(mdp.parents())
-
-    print("")
-    
-    mdp.molecule.draw_mol_to_file(name="test1",highlightBonds=True)
-
-    c = 2
-
-    for mol, (blockidx, stemidx) in mdp.parents():
-        print("Parent")
-        print(f"smiles: {mol.get_smiles()}")
-        print(f"blockidxs: {mol.blockidxs}")
-        print(f"slices: {mol.slices}")
-        print(f"jbonds: {mol.jbonds}")
-        print(f"stems: {mol.stems}")
-        print("")
-        mol.draw_mol_to_file(name=f"parent{c}",highlightBonds=True)
-        c += 1
-        org_mol = mol.copy()
-        org_mol.add_block(blockidx=blockidx,stemidx=stemidx)
-        print("Original")
-        print(f"smiles: {org_mol.get_smiles()}")
-        print(f"blockidxs: {org_mol.blockidxs}")
-        print(f"slices: {org_mol.slices}")
-        print(f"jbonds: {org_mol.jbonds}")
-        print(f"stems: {org_mol.stems}")
-        print("")
-        org_mol.draw_mol_to_file(name=f"test{c}",highlightBonds=True)
-        c += 1
-
- """
-    # sanity check
-
-    # mdp.molecule = BlockMolecule()
-
-    # mdp.add_block(29)
-
-    # print(mdp.parents())
 
 
 
