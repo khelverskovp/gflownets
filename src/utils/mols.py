@@ -530,14 +530,14 @@ class BlockMolecule:
         true_blocks = self.bdict.true_blockidx 
         stem_offset = self.bdict.stem_type_offset
 
-        edge_attrs = [(stem_offset[unique_blocks[self.blockidxs[i[0]]]] + i[2],
-                       stem_offset[unique_blocks[self.blockidxs[i[1]]]] + i[3])
+        edge_attrs = [(stem_offset[true_blocks[self.blockidxs[i[0]]]] + i[2],
+                       stem_offset[true_blocks[self.blockidxs[i[1]]]] + i[3])
                       for i in self.jbonds]
     
-        stemtypes = [stem_offset[unique_blocks[self.blockidxs[i[0]]]] + i[1] for i in self.stems]
+        stemtypes = [stem_offset[true_blocks[self.blockidxs[i[0]]]] + i[1] for i in self.stems]
 
         g = Data(
-            x=f([unique_blocks[i] for i in self.blockidxs]),
+            x=f([true_blocks[i] for i in self.blockidxs]),
             edge_index=f(edges).T if len(edges) > 0 else f([[],[]]),
             edge_attr=f(edge_attrs) if len(edges) > 0 else f([]).reshape((0,2)),
             stems=f(self.stems) if len(self.stems) > 0 else f([(0,0)]),
