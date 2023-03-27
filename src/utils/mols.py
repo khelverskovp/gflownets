@@ -12,11 +12,11 @@ from typing import List
 from matplotlib.colors import ColorConverter
 import os
 
-import chem
+import src.utils.chem as chem
 from torch_geometric.data import Data, Batch
 import torch
 
-from chem import atomic_numbers
+from src.utils.chem import atomic_numbers
 
 # keeps track of the domain of possible blocks
 # cache to store library for features such as acceptor and donor characteristics
@@ -43,7 +43,7 @@ class BlockDictionary:
         # i.e. highlighting colors of bonds
         # self.colors = ["red","green","blue","orange","purple","pink","cyan","olive"]
         # self.colors = ["yellow","lightgreen"]
-        self.colors = ["yellow","lightgreen","orange"]
+        self.colors = ["yellow","lightgreen","orange","purple","pink","cyan","olive","red"]
 
         # define the set of unique blocks and the length of the set
         self.unique_block_set = sorted(set(self.block_smis))
@@ -250,7 +250,7 @@ class BlockMolecule:
         return: molecule in rdkit.Chem.rdchem.Mol form
         """
         if return_bonds:
-            chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
+            return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)
 
         return chem.mol_from_jbonds_and_blocks(self.jbonds, blocks=self.blocks)[0]
     
