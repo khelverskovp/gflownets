@@ -49,10 +49,12 @@ class BlockDictionary:
         self.unique_block_set = sorted(set(self.block_smis))
         self.n_unique_blocks = len(self.unique_block_set)
 
-        # define 
-        self.stem_type_offset = np.int32([0] + list(np.cumsum([max(self.block_rs[self.block_smis.index(smi)]) for smi in self.unique_block_set])))
+        # define indexes to represent available stems for each unique block
+        self.stem_type_offset = np.int32([0] + list(np.cumsum([max(self.block_rs[self.block_smis.index(smi)])+1 for smi in self.unique_block_set])))
+        # the last index represents no stem. Used for empty molecules and molecules with no available stems
         self.n_stem_types = self.stem_type_offset[-1]
 
+        # define a list to map blockidx (0-104) to unique idx (0-71) because of duplicates
         self.true_blockidx = [self.unique_block_set.index(smi) for smi in self.block_smis]
 
 
@@ -509,10 +511,10 @@ class BlockMolecule:
         return g
     
     def to_block_graph(self):
-        # define lambda function to convert lists to torch tensors
+        # define lambda function to convert lists to torch tensors 
         f = lambda x: torch.tensor(x, dtype=torch.long, device='cpu')
 
-        # if the molecule is empty return...
+        # an empty molecule is represented as block 72 with stemtype 214
         if len(self.blockidxs) == 0:
             g = Data(
                 x=f([self.bdict.n_unique_blocks]),
@@ -522,20 +524,25 @@ class BlockMolecule:
                 stemtypes=f([self.bdict.n_stem_types]))
             return g
         
-        # else the molecule is not empty return...
-        # edges are equal to (block1,block2) for each bond in jbonds
-        edges = [(i[0],i[1]) for i in self.jbonds]
+        # else the molecule is not empty
+        # edges are equal to (block1,block2) for each bond in jbonds. List that maps which blocks have edges.
+        edges = [(jbond[0],jbond[1]) for jbond in self.jbonds]
 
         # unique blocks and stem_type_offset are used to convert the blockidxs to the correct block type
         true_blocks = self.bdict.true_blockidx 
         stem_offset = self.bdict.stem_type_offset
 
-        edge_attrs = [(stem_offset[true_blocks[self.blockidxs[i[0]]]] + i[2],
-                       stem_offset[true_blocks[self.blockidxs[i[1]]]] + i[3])
-                      for i in self.jbonds]
+        # get unique stemidx for each bond. 
+        # each block has a unique range of values that describes values for stems
+        # e.g. stems on "C1=CNC=CC1" are defined by values in the range 4-6. i.e. a value of 5 means that atom 1 on "C1=CNC=CC1" is used in the given junction bond
+        edge_attrs = [(stem_offset[true_blocks[self.blockidxs[jbond[0]]]] + jbond[2],
+                       stem_offset[true_blocks[self.blockidxs[jbond[1]]]] + jbond[3])
+                      for jbond in self.jbonds]
     
+        # get unique stem idx for open stems
         stemtypes = [stem_offset[true_blocks[self.blockidxs[i[0]]]] + i[1] for i in self.stems]
 
+        # create the graph
         g = Data(
             x=f([true_blocks[i] for i in self.blockidxs]),
             edge_index=f(edges).T if len(edges) > 0 else f([[],[]]),
@@ -545,10 +552,6 @@ class BlockMolecule:
         
         #g.to(device) moves the data to the device (cpu or gpu)
         return g
-
-
-
-
 
 
 class MoleculeMDP:
