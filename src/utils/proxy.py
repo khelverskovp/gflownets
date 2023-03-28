@@ -15,9 +15,9 @@ import torch_geometric.nn as gnn
 import requests
 
 # import MoleculeMDP from mols.py
-from mols import BlockMolecule, MoleculeMDP
+from src.utils.mols import BlockMolecule, MoleculeMDP
 
-from chem import atomic_numbers
+from src.utils.chem import atomic_numbers
 
 from torch_sparse import coalesce
 

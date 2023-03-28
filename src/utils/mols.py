@@ -519,7 +519,7 @@ class BlockMolecule:
             g = Data(
                 x=f([self.bdict.n_unique_blocks]),
                 edge_index=f([[],[]]),
-                edge_attr=f(([])),
+                edge_attr=f(([],[])).T,
                 stems=f([(0,0)]),
                 stemtypes=f([self.bdict.n_stem_types]))
             return g
@@ -559,12 +559,8 @@ class MoleculeMDP:
         self.molecule = BlockMolecule()
         # initialize translation table
         self.translation_table = self.molecule.bdict.get_translation_table()
-
-    def add_block(self, blockidx: int, stemidx: int=0) -> None:
-        self.molecule.add_block(blockidx=blockidx,stemidx=stemidx)
-
     
-    def parents(self):
+    def parents(self, mol):
         """
             return a list of parent states
             [(parent_molecule in BlockMolecule format, (blockidx, stemidx)),...]
@@ -576,13 +572,13 @@ class MoleculeMDP:
 
 
         # if the molecule exist of the only one block there exist only one parent state
-        if self.molecule.numblocks == 1:
-            return [(BlockMolecule(), (self.molecule.blockidxs[0],0))]
+        if mol.numblocks == 1:
+            return [(BlockMolecule(), (mol.blockidxs[0],0))]
 
         # compute the degree for each block in the molecule
         # initialize to zero
-        degree = {i: 0 for i in range(self.molecule.numblocks)}
-        for (block1, block2, _, _) in self.molecule.jbonds:
+        degree = {i: 0 for i in range(mol.numblocks)}
+        for (block1, block2, _, _) in mol.jbonds:
             degree[block1] += 1
             degree[block2] += 1
         
@@ -596,13 +592,13 @@ class MoleculeMDP:
         # loop over all the blocks we can infer parent states from
         for ridx in removed_blocks:
             # create a new instance of the molecule
-            new_mol = self.molecule.copy()
+            new_mol = mol.copy()
 
             # delete the block from new_mol
             removed_stem = new_mol.delete_block_with_degree_one(ridx)
 
             # get block index from the deleted block which is still stored in the original self.molecule
-            blockidx = self.molecule.blockidxs[ridx]
+            blockidx = mol.blockidxs[ridx]
 
             # when the block was deleted from the molecule the stem it was attached to was placed in the end of new_mol.stems
             stemidx = len(new_mol.stems) - 1

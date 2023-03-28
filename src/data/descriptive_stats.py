@@ -145,15 +145,7 @@ def main(input_filepath):
 
     print(f"Number of NANS: {nans}") """
 
-    for i in range(len(df.smiles)):
-        done = False
-        for j in range(i+1,len(df.smiles)):
-            if df.smiles[i] == df.smiles[j]:
-                print(df.iloc[i])
-                print(df.iloc[j])
-                break
-        if done:
-            break
+    
 
 
 

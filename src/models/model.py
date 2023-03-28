@@ -14,7 +14,7 @@ from src.utils.mols import BlockDictionary, BlockMolecule
 
 class GFlownet(nn.Module):
     
-    def __init__(self, nemb, out_per_stem, out_per_mol, num_conv_steps):
+    def __init__(self, nemb, out_per_stem, out_per_stop, num_conv_steps):
         super().__init__()
 
         # block dictionary
@@ -45,7 +45,7 @@ class GFlownet(nn.Module):
         
         # output value for stop action
         self.global2pred = nn.Sequential(nn.Linear(nemb, nemb), self.act,
-                                         nn.Linear(nemb, out_per_mol))
+                                         nn.Linear(nemb, out_per_stop))
         
         self.num_conv_steps = num_conv_steps
         self.nemb = nemb
@@ -114,12 +114,12 @@ class GFlownet(nn.Module):
 
         # get output for each stem (out_per_mol long vector)
         # simple neural network with some hidden layers
-        stem_pred = self.stem2pred(stem_out_cat) # has shape (num_stems, out_per_mol) (105 in our case)
+        stem_pred = self.stem2pred(stem_out_cat) # has shape (num_stems, out_per_stop) (105 in our case)
 
         # compute value for stop action
         stop_pred = self.global2pred(gnn.global_mean_pool(out, graph.batch)) # has shape (batchsize, 1)
         
-        return stem_pred, stop_pred
+        return stem_pred, stop_pred, stem_batch
     
 if __name__ == "__main__":
     molecule = BlockMolecule()
@@ -154,6 +154,7 @@ if __name__ == "__main__":
     stem_out, stop_out = net(mol_graph_batch)
 
     logits = torch.cat([stop_out.reshape(-1), stem_out.reshape(-1)])
+    
     cat = torch.distributions.Categorical(
             logits=logits)
     action = cat.sample().item()
