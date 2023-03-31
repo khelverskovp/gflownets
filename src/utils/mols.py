@@ -510,9 +510,9 @@ class BlockMolecule:
             g.edge_attr = torch.zeros((1, g.edge_attr.shape[1])).to(floatX)
         return g
     
-    def to_block_graph(self):
+    def to_block_graph(self,device=torch.device("cpu")):
         # define lambda function to convert lists to torch tensors 
-        f = lambda x: torch.tensor(x, dtype=torch.long, device='cpu')
+        f = lambda x: torch.tensor(x, dtype=torch.long, device=device)
 
         # an empty molecule is represented as block 72 with stemtype 214
         if len(self.blockidxs) == 0:
@@ -550,7 +550,7 @@ class BlockMolecule:
             stems=f(self.stems) if len(self.stems) > 0 else f([(0,0)]),
             stemtypes=f(stemtypes) if len(self.stems) > 0 else f([self.bdict.n_stem_types]))
         
-        #g.to(device) moves the data to the device (cpu or gpu)
+        g.to(device) # moves the data to the device (cpu or gpu)
         return g
 
 

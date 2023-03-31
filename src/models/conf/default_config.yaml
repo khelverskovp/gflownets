@@ -1,0 +1,8 @@
+defaults:
+    - experiment: exp_molecule
+    - wandb: wandb_molecule
+
+# disable hydra changing working directory
+hydra:
+    job:
+        chdir: False

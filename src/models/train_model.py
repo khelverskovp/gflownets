@@ -7,9 +7,12 @@ import pandas as pd
 import numpy as np
 import json
 import torch
+import hydra
+import omegaconf
+import wandb
 
 from src.models.model import GFlownet
-from src.utils.mols import BlockMolecule, MoleculeMDP
+from src.utils.mols import BlockDictionary, BlockMolecule, MoleculeMDP
 from src.utils.proxy import Proxy
 
 from torch_geometric.data import Data, Batch
@@ -17,33 +20,48 @@ from torch.distributions.categorical import Categorical
 
 import matplotlib.pyplot as plt
 
-@click.command()
-def main():
+@hydra.main(config_path='conf/', config_name="default_config.yaml", version_base="1.1")
+def main(cfg):
     """
         Train model
     """
     logger = logging.getLogger(__name__)
     logger.info('train model')
+
+    # retrieve the values from the config files
+    cfg_wandb = cfg.wandb.params
+    cfg_exp = cfg.experiment
+
+    # integrate the parameters from hydra into wandb 
+    # only store the experiment specific parameters
+    cfg_params = omegaconf.OmegaConf.to_container(
+            cfg_exp, resolve=True, throw_on_missing=True
+    )["hp"]
+
+    # initialize weights and biases agent
+    wandb.init(entity=cfg_wandb.entity, project=cfg_wandb.project, config=cfg_params)
     
-    min_blocks = 2
-    max_blocks = 8
+    bdict = BlockDictionary()
 
-    nemb = 256
-    num_out_per_stem = 105
+    min_blocks = cfg_exp.hp.min_blocks
+    max_blocks = cfg_exp.hp.max_blocks
+
+    nemb = cfg_exp.hp.nemb
+    num_out_per_stem = len(bdict.block_smis)
     num_out_per_stop = 1
-    num_conv_steps = 12
+    num_conv_steps = cfg_exp.hp.num_conv_steps
 
-    lr = 5e-4
-    weight_decay = 0
-    beta1 = 0.9
-    beta2 = 0.999
-    epsilon = 1e-8
+    lr = cfg_exp.hp.lr
+    weight_decay = cfg_exp.hp.weight_decay
+    beta1 = cfg_exp.hp.beta1
+    beta2 = cfg_exp.hp.beta2
+    epsilon = cfg_exp.hp.epsilon
 
-    epochs = 500
+    epochs = cfg_exp.hp.epochs
 
-    mbsize = 4
+    mbsize = cfg_exp.hp.mbsize
 
-    device = torch.device("cpu")
+    device = torch.device(cfg_exp.hp.device)
 
     # define model
     model = GFlownet(nemb=nemb,
@@ -65,14 +83,14 @@ def main():
     losses = []
 
     # define training loop
-    for i in range(epochs):
-        print(i)
+    for epoch in range(epochs):
+        print(epoch)
         # create a minibatch of empty molecules
         mols = [BlockMolecule() for _ in range(mbsize)]
         # mols[3].add_block(0,0)
         #[mol.add_block(0,0) for mol in mols]
 
-        batch = [mol.to_block_graph() for mol in mols]
+        batch = [mol.to_block_graph(device=device) for mol in mols]
 
         mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
         mols_graph_batch.to(device)
@@ -114,7 +132,7 @@ def main():
                     mols[i].add_block(blockidx=blockidx, stemidx=stemidx)
 
             # update batch
-            batch = [mol.to_block_graph() for mol in mols]
+            batch = [mol.to_block_graph(device=device) for mol in mols]
 
             mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
             mols_graph_batch.to(device)
@@ -136,7 +154,7 @@ def main():
                 # compute inflow from parents
                 parent_flow_prediction = 0
                 for parent, (blockidx, stemidx) in parents:
-                    parent_graph = parent.to_block_graph()
+                    parent_graph = parent.to_block_graph(device=device)
                     parent_graph_batch = Batch.from_data_list([parent_graph])
                     parent_graph_batch.to(device)
 
@@ -160,12 +178,12 @@ def main():
         opt.zero_grad()
         minibatch_loss = 0
 
+        wandb.log({"loss": losses[-1]})
+        wandb.watch(model)
+
                     
         #print([mols[i].blockidxs for i in range(mbsize)])
         #[mols[i].draw_mol_to_file(f"{i}_molgflow",highlightBonds=True) for i in range(mbsize)]
-
-    plt.plot(range(epochs), losses)   
-    plt.show()     
 
         
     
