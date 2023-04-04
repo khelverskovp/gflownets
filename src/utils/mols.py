@@ -127,7 +127,7 @@ class BlockDictionary:
             for j in self.block_rs[block_i]:
                 # if the stem is already in the translation table we dont need to do anything
                 if j not in self.translation_table[block_i].keys():
-                    symmetric_dubplicate = None
+                    symmetric_duplicate = None
                     # loop over stems and blockidx in the translation table for the block
                     for stem, block in self.translation_table[block_i].items():
                         # blocks is a list of the base molecule and the block we are checking in rdkit format
@@ -144,15 +144,15 @@ class BlockDictionary:
                         # now we check if mol1 and mol2 are symmetric dubplicates 
                         if Chem.MolToSmiles(mol1) == Chem.MolToSmiles(mol2) or mol1.HasSubstructMatch(mol2):
                             # if they are we add the block to the translation table
-                            symmetric_dubplicate = block
+                            symmetric_duplicate = block
                             break
                         
-                    if symmetric_dubplicate is None:
+                    if symmetric_duplicate is None:
                         # if we could not find a symmetric duplicate we raise an error. 
                         raise ValueError("Could not find symmetric duplicate for block {} and stem {}".format(block_i, j))
                     else:
                         # else we add the symmetric duplicate to the translation table
-                        self.translation_table[block_i][j] = symmetric_dubplicate
+                        self.translation_table[block_i][j] = symmetric_duplicate
 
     def get_translation_table(self):
         self.build_translation_table()
@@ -492,13 +492,13 @@ class BlockMolecule:
         # get atom indices for atoms in self.stems
         atoms_in_open_stems = self.stem_atmidxs
         if not len(atoms_in_open_stems):
-            # if no open stems appear set the first value to 0
+            # if no open stems appear set the first value to 1 at index 70
             atoms_in_open_stems = [0]
 
         # create stem mask which is initially 0 for all atoms
         stem_mask = torch.zeros((g.x.shape[0], 1))
-        # becomes an additional feature to the onehot encoded atom vector
-        # at index 70 - 1 if the atom is an open stem otherwise 0
+        # becomes an additional feature to the onehot encoded atom vector at index 70
+        # 1 if the atom is an open stem otherwise 0
         stem_mask[torch.tensor(atoms_in_open_stems).long()] = 1
 
         # add to g.x
@@ -626,7 +626,7 @@ if __name__ == "__main__":
 
     # build molecule
     # choose molecules to add
-    block_list = [91, 29, 48, 95]
+    """ block_list = [91, 29, 48, 95]
 
     for block in block_list:
         try:
@@ -647,10 +647,37 @@ if __name__ == "__main__":
     print(f"to block graph edge_index: {molecule.to_block_graph().edge_index}")
     print(f"to block graph edge_attr: {molecule.to_block_graph().edge_attr}")
     print(f"to block graph stems: {molecule.to_block_graph().stems}")
-    print(f"to block graph stemtypes: {molecule.to_block_graph().stemtypes}")
+    print(f"to block graph stemtypes: {molecule.to_block_graph().stemtypes}") """
 
- 
-   
+    """ max_atomic_num = 0
+
+    for block in range(105):
+        molecule = BlockMolecule()
+        molecule.add_block(block)
+        graph = molecule.to_atom_graph()
+        for atom in graph.x:
+            if atom[66].item():
+                print(block)
+                molecule.draw_mol_to_file("test50") """
+    
+    molecule = BlockMolecule()
+    molecule.add_block(0)
+    molecule.add_block(5)
+    molecule.add_block(6)
+    graph = molecule.to_block_graph()
+
+    print(graph.x)
+    print(graph.edge_index)
+    print(graph.edge_attr)
+    print(graph.stems)
+    print(graph.stemtypes)
+
+    print(sorted(set(molecule.bdict.block_smis)))
+    #import pdb
+    #pdb.set_trace()
+    
+
+    
     
 
 
