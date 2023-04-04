@@ -673,6 +673,7 @@ if __name__ == "__main__":
     print(graph.stemtypes)
 
     print(sorted(set(molecule.bdict.block_smis)))
+    # debug
     #import pdb
     #pdb.set_trace()
     
