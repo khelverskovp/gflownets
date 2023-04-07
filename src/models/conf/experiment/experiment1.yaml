@@ -1,0 +1,21 @@
+# config file for first experiment
+# hyperparameters
+hp:
+  epochs: 50
+  min_blocks: 2
+  max_blocks: 8
+  device: "cpu"
+  run_name: "experiment-1"
+  lr: 5e-4
+  mbsize: 4
+  beta1_adam: 0.9
+  beta2_adam: 0.999
+  epsilon_adam: 1e-8
+  nemb: 256 # number of elements for embeddings
+  num_conv_steps: 10
+  epsilon_loss: 2.5e-5
+  reward_T: 8
+  reward_beta: 10
+  random_action_prob: 0.05
+  lambda_T: 10
+  R_min: 0.01
