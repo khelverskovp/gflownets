@@ -43,6 +43,7 @@ def main(cfg):
     
     bdict = BlockDictionary()
 
+    # load hyperparameters from configuration file
     min_blocks = cfg_exp.hp.min_blocks
     max_blocks = cfg_exp.hp.max_blocks
 
@@ -55,8 +56,10 @@ def main(cfg):
     weight_decay = cfg_exp.hp.weight_decay
     beta1 = cfg_exp.hp.beta1
     beta2 = cfg_exp.hp.beta2
-    epsilon = cfg_exp.hp.epsilon
+    epsilon_adam = cfg_exp.hp.epsilon_adam
 
+    epsilon_loss = cfg_exp.hp.epsilon_loss
+    
     epochs = cfg_exp.hp.epochs
 
     mbsize = cfg_exp.hp.mbsize
@@ -78,7 +81,7 @@ def main(cfg):
     # define optimizer
     opt = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay,
                            betas=(beta1, beta2),
-                           eps=epsilon)
+                           eps=epsilon_adam)
     
     losses = []
 

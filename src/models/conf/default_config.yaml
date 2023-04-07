@@ -1,4 +1,5 @@
 defaults:
+    - _self_
     - experiment: exp_molecule
     - wandb: wandb_molecule
 

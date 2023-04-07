@@ -10,7 +10,8 @@ hp:
   weight_decay: 0
   beta1: 0.9
   beta2: 0.999
-  epsilon: 1e-8
+  epsilon_adam: 1e-8
+  epsilon_loss: 2.5e-5
   mbsize: 4
   device: "cpu"
   update_freq: 4 # how often should it update weights
