@@ -177,8 +177,8 @@ class Proxy:
         preds = self.mpnn(batch).reshape((-1,)).data.cpu()
         preds[preds.isnan()] = 0
 
-        # limit to values between 1e-4 and 100 (ensures positive rewards only)
-        preds = preds.clip(1e-4, 100).reshape((-1, 1))
+        # reshape
+        preds = preds.reshape((-1, 1))
         return preds, is_valid
     
     def __call__(self, mols):

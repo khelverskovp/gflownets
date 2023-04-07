@@ -151,6 +151,9 @@ def main(cfg):
             out_flow_prediction = [torch.concatenate((out_flow_stop[i],out_flow_stem[stem_batch == i].reshape(-1))) for i in range(mbsize)]
             
             for i in range(mbsize):
+                # dont include molecules that terminated in previous steps
+                if done[i] != t and done[i]:
+                    continue
                 # compute parent states for each molecule        
                 parents = mdp.parents(mols[i])
 
