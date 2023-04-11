@@ -80,6 +80,8 @@ def main(cfg):
                      out_per_stem=num_out_per_stem,
                      out_per_stop=num_out_per_stop,
                      num_conv_steps=num_conv_steps)
+    model.to(torch.double)
+    model.to(device)
     
     # define reward proxy function
     proxy = Proxy(device=device)
@@ -239,6 +241,7 @@ def main(cfg):
         wandb.log({"Leaf loss": leaf_losses[-1]})
         wandb.log({"Flow loss": flow_losses[-1]})
         wandb.log({"Loss": losses[-1]})
+        wandb.log({"Epoch": epoch})
         wandb.watch(model)
 
     steps = np.arange(len(leaf_losses))

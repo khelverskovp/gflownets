@@ -158,6 +158,7 @@ class Proxy:
         # set values appropriately
         for k, v in param_map.items():
             mpnn.get_parameter(k).data = torch.tensor(v)
+        mpnn.to(self.device)
         return mpnn
             
     def compute_reward(self, mols):
