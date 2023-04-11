@@ -11,7 +11,7 @@ hydra-core
 h5py
 pandas
 numpy
-rdkit
+rdkit-pypi
 scipy
 torch
 torch-scatter
