@@ -99,3 +99,5 @@ results/
 # suppress hydra and wandb
 wandb/
 outputs/
+
+models/

@@ -1,11 +1,11 @@
 # config file for first experiment
 # hyperparameters
 hp:
-  epochs: 50
+  total_epochs: 250000
   min_blocks: 2
   max_blocks: 8
-  device: "cpu"
-  run_name: "experiment-1"
+  device: "cuda"
+  run_name: "experiment_1"
   lr: 5e-4
   mbsize: 4
   beta1_adam: 0.9
@@ -19,3 +19,4 @@ hp:
   random_action_prob: 0.05
   lambda_T: 10
   R_min: 0.01
+  save_freq: 1000 # determines how often the model should be saved 

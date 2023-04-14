@@ -12,6 +12,9 @@ import omegaconf
 import wandb
 import random
 import os
+import pickle
+import gzip
+import time
 
 from src.models.model import GFlownet
 from src.utils.mols import BlockDictionary, BlockMolecule, MoleculeMDP
@@ -35,7 +38,7 @@ def main(cfg):
     cfg_exp = cfg.experiment
 
     # load hyperparameters from configuration file
-    epochs = cfg_exp.hp.epochs
+    total_epochs = cfg_exp.hp.total_epochs
     mbsize = cfg_exp.hp.mbsize
 
     device = torch.device(cfg_exp.hp.device)
@@ -61,6 +64,11 @@ def main(cfg):
     lambda_T = cfg_exp.hp.lambda_T
     R_min = cfg_exp.hp.R_min
 
+    run_name = cfg_exp.hp.run_name
+
+    # how often should the model be saved
+    save_freq = cfg_exp.hp.save_freq
+
     # integrate the parameters from hydra into wandb 
     # only store the experiment specific parameters
     cfg_params = omegaconf.OmegaConf.to_container(
@@ -68,8 +76,15 @@ def main(cfg):
     )["hp"]
 
     # initialize weights and biases agent
-    wandb.init(entity=cfg_wandb.entity, project=cfg_wandb.project, name=cfg_exp.hp.run_name, config=cfg_params)
+    # wandb.init(entity=cfg_wandb.entity, project=cfg_wandb.project, name=run_name, config=cfg_params)
     
+    # make sure folders are created for specific experiment
+    models_path = f"models/runs/{run_name}"
+    os.makedirs(models_path,exist_ok=True)
+    results_path = f"results/{run_name}"
+    os.makedirs(results_path,exist_ok=True)
+
+    # instantiate model and proxy
     bdict = BlockDictionary()
 
     num_out_per_stem = len(bdict.block_smis)
@@ -80,6 +95,25 @@ def main(cfg):
                      out_per_stem=num_out_per_stem,
                      out_per_stop=num_out_per_stop,
                      num_conv_steps=num_conv_steps)
+    
+    # get the latest model checkpoint - if none simply start from scratch
+    param_id = 0
+    for i in range(save_freq,total_epochs+1,save_freq):
+        if os.path.isfile(f"{models_path}/params_{i}.pkl.gz"):
+            param_id = i
+    
+    # if we have a checkpoint load parameters
+    if param_id:
+        # if we already have a model for the specific experiment that has been fully trained
+        # dont train further
+        if param_id == total_epochs:
+            time.sleep(10000)
+            raise Exception("TRAINING IS COMPLETE!")
+        
+        params = pickle.load(gzip.open(f"{models_path}/params_{param_id}.pkl.gz"))
+        for a,b in zip(model.parameters(), params):
+            a.data = torch.tensor(b, dtype=torch.double)
+
     model.to(torch.double)
     model.to(device)
     
@@ -93,6 +127,10 @@ def main(cfg):
     opt = torch.optim.Adam(model.parameters(), lr,
                            betas=(beta1_adam, beta2_adam),
                            eps=epsilon_adam)
+    
+    # make lists to store losses
+    losses = []
+
     leaf_losses = []
     leaf_losses_min = []
     leaf_losses_max = []
@@ -100,17 +138,19 @@ def main(cfg):
     flow_losses_min = []
     flow_losses_max = []
 
-    losses = []
-
+    # list to store rewards and trajectories
     rewards = []
+    trajectories = []
+    
 
     # define training loop
-    for epoch in range(epochs):
-        print(epoch)
+    for epoch in range(save_freq):
+        if (epoch+param_id) % 100 == 0:
+            logger.info(epoch+param_id)
         # create a minibatch of empty molecules
         mols = [BlockMolecule() for _ in range(mbsize)]
-        # mols[3].add_block(0,0)
-        #[mol.add_block(0,0) for mol in mols]
+        rs = [0 for _ in range(mbsize)]
+        trajs = [[] for _ in range(mbsize)]
 
         batch = [mol.to_block_graph(device=device) for mol in mols]
 
@@ -160,6 +200,9 @@ def main(cfg):
                     # add block to molecule
                     mols[i].add_block(blockidx=blockidx, stemidx=stemidx)
 
+                    # add action to trajectory stat
+                    trajs[i].append((blockidx, stemidx))
+
             # update batch
             batch = [mol.to_block_graph(device=device) for mol in mols]
 
@@ -197,13 +240,14 @@ def main(cfg):
                 # if a molecule was done being build in this iteration compute reward
                 if (done[i] == t and done[i]) or (t == max_blocks-1 and not done[i]):
                     # get reward from proxy
-                    reward_true = proxy([mols[i]]).item()
-                    rewards.append(reward_true)
+                    reward_true = proxy([mols[i]])
+                    # match reward to specific molecule
+                    rs[i] = reward_true.cpu().item()
                     # log reward
-                    wandb.log({"Reward": rewards[-1]})
+                    # wandb.log({"Reward": rewards[-1]})
                     # we transform the reward as (R(x)/T)^beta
                     # make sure that R>=R_min, i.e. clip value
-                    reward = (max(R_min,reward_true) / reward_T)**reward_beta
+                    reward = (max(R_min,reward_true.item()) / reward_T)**reward_beta
                     out_flow_prediction[i] = torch.zeros(out_flow_prediction[i].shape[0])
                 else:
                     # set reward to zero
@@ -220,11 +264,14 @@ def main(cfg):
                 # multiply losses for terminal states with factor lambda
                 if reward != 0:
                     loss *= lambda_T
-                    leaf_loss.append(loss.item())
+                    leaf_loss.append(loss.cpu().item())
                 else:
-                    flow_loss.append(loss.item())               
+                    flow_loss.append(loss.cpu().item())               
                 
                 minibatch_loss += loss
+
+        # log losses
+        losses.append(minibatch_loss.cpu().item())
 
         leaf_losses.append(np.mean(leaf_loss))
         leaf_losses_min.append(np.min(leaf_loss))
@@ -232,19 +279,53 @@ def main(cfg):
         flow_losses.append(np.mean(flow_loss))
         flow_losses_min.append(np.min(flow_loss))
         flow_losses_max.append(np.max(flow_loss))
-        losses.append(minibatch_loss.item())
+
+        # log sampled mols information
+        #sm = list(zip(rs,mols,trajs))
+        rewards.extend(rs)
+        trajectories.extend(trajs)
+
+        # update gradients and reset minibatch loss
         minibatch_loss.backward()
         opt.step()
         opt.zero_grad()
         minibatch_loss = 0
 
-        wandb.log({"Leaf loss": leaf_losses[-1]})
-        wandb.log({"Flow loss": flow_losses[-1]})
-        wandb.log({"Loss": losses[-1]})
-        wandb.log({"Epoch": epoch})
-        wandb.watch(model)
+        # wandb.log({"Leaf loss": leaf_losses[-1]})
+        # wandb.log({"Flow loss": flow_losses[-1]})
+        # wandb.log({"Loss": losses[-1]})
+        # wandb.log({"Epoch": epoch})
+        # wandb.watch(model)
 
-    steps = np.arange(len(leaf_losses))
+    logger.info("Beginning saving process!")
+
+    # save model
+    new_param_id = param_id + save_freq
+    pickle.dump([i.data.cpu().numpy() for i in model.parameters()],
+                    gzip.open(f"{models_path}/params_{new_param_id}.pkl.gz", 'wb'))
+    
+    # log rewards and trajectories
+    pickle.dump(rewards,
+                gzip.open(f"{results_path}/rewards.pkl.gz", 'ab'))
+
+    pickle.dump(trajectories,
+                gzip.open(f"{results_path}/trajectories.pkl.gz", 'ab'))
+    
+    # log losses
+    pickle.dump({'losses': losses,
+                 'leaf_losses': leaf_losses,
+                 'leaf_losses_min': leaf_losses_min,
+                 'leaf_losses_max': leaf_losses_max,
+                 'flow_losses': flow_losses,
+                 'flow_losses_min': flow_losses_min,
+                 'flow_losses_max': flow_losses_max,
+                 'param_id:': param_id},
+                    gzip.open(f'{results_path}/losses.pkl.gz', 'ab'))
+    logger.info("Done saving!")
+
+    time.sleep(10)
+
+    """ steps = np.arange(len(leaf_losses))
     mols = np.arange(len(rewards))
 
     path = f'reports/figures/{cfg_exp.hp.run_name}'
@@ -263,7 +344,10 @@ def main(cfg):
     plt.title("Flow and leaf losses")
 
     filename = f"{path}/leafflowloss.png"
-    plt.savefig(filename)
+    plt.savefig(filename) """
+
+    
+
 
         
     
