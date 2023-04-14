@@ -319,7 +319,8 @@ def main(cfg):
                  'flow_losses': flow_losses,
                  'flow_losses_min': flow_losses_min,
                  'flow_losses_max': flow_losses_max,
-                 'param_id:': param_id},
+                 'param_id:': param_id,
+                 'hp': cfg_params},
                     gzip.open(f'{results_path}/losses.pkl.gz', 'ab'))
     logger.info("Done saving!")
 

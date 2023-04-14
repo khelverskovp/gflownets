@@ -13,7 +13,7 @@ if __name__ == "__main__":
     with gzip.open("results/experiment_1/losses.pkl.gz") as fr:
         try:
             while True:
-                data_losses.append(pickle.load(fr))
+                data_losses.append(pickle.load(fr)["hp"])
         except EOFError:
             pass
 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
                      num_conv_steps=10)
     
     # get the latest model checkpoint - if none simply start from scratch
-    param_id = 10
+    param_id = 1
     
     params = pickle.load(gzip.open(f"models/runs/experiment_1/params_{param_id}.pkl.gz"))
     
