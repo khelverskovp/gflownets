@@ -6,6 +6,7 @@ from dotenv import find_dotenv, load_dotenv
 import pandas as pd
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
 @click.command()
 @click.argument('input_filepath', default="data/processed" ,type=click.Path(exists=True))
@@ -45,10 +46,26 @@ def main(input_filepath):
                 break
         if done:
             break """
-    df.dockscore[df.dockscore > 0] = 0
+    """ df.dockscore[df.dockscore > 0] = 0
     print(np.mean(df.dockscore[df.dockscore < 0]), np.std(df.dockscore[df.dockscore < 0]))
     print(df.iloc[59])
-    print(df.iloc[605])
+    print(df.iloc[605]) """
+    target_norm = [-8.6,1.1]
+    temp = np.copy(df.dockscore)
+    temp[temp > 0] = 0
+    vals = 4-(temp-target_norm[0])/target_norm[1]
+    print(np.mean(4-(temp-target_norm[0])/target_norm[1]))
+    print(np.sum(vals >= 7))
+
+    pdf, bins = np.histogram(vals, density=True)
+    pdf = pdf / np.sum(pdf)
+
+    # Plot the empirical PDF
+    plt.plot(bins[:-1], pdf, 'b', linewidth=2)
+    plt.xlabel('Value')
+    plt.ylabel('Probability Density')
+    plt.title('Empirical PDF')
+    plt.show()
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
