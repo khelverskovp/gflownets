@@ -595,13 +595,13 @@ class MoleculeMDP:
             # create a new instance of the molecule
             parent_mol = mol.copy()
 
-            # delete the block from new_mol
+            # delete the block from parent_mol
             removed_stem = parent_mol.delete_block_with_degree_one(ridx)
 
             # get block index from the deleted block which is still stored in the original self.molecule
             blockidx = mol.blockidxs[ridx]
 
-            # when the block was deleted from the molecule the stem it was attached to was placed in the end of new_mol.stems
+            # when the block was deleted from the molecule the stem it was attached to was placed in the end of parent_mol.stems
             stemidx = len(parent_mol.stems) - 1
 
             # define parent
