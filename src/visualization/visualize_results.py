@@ -5,65 +5,28 @@ import time
 import numpy as np
 from src.utils.mols import BlockMolecule
 from src.utils.proxy import Proxy
+from src.utils.plots import make_leaf_flow_loss_plot
 from src.models.model import GFlownet
 from torch_geometric.data import Batch
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
-def smooth(y, box_pts):
-    box = np.ones(box_pts)/box_pts
-    y_smooth = np.convolve(y, box, mode='same')
-    return y_smooth
-
 if __name__ == "__main__":
-    #To load from pickle file
-    leaf_losses = []
-    leaf_losses_min = []
-    leaf_losses_max = []
-    flow_losses = []
-    flow_losses_min = []
-    flow_losses_max = []
-    with gzip.open("results/experiment_1/losses.pkl.gz") as fr:
+    # experiment_id
+    experiment_id = "experiment_1"
+
+    # make leaf loss plot
+    make_leaf_flow_loss_plot(experiment_id)
+    
+    # make rewards 
+    """ with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
         try:
             while True:
-                data = pickle.load(fr)
-                leaf_losses.extend(data["leaf_losses"])
-                leaf_losses_min.extend(data["leaf_losses_min"])
-                leaf_losses_max.extend(data["leaf_losses_max"])
-                flow_losses.extend(data["flow_losses"])
-                flow_losses_min.extend(data["flow_losses_min"])
-                flow_losses_max.extend(data["flow_losses_max"])
+                rewards.extend(pickle.load(fr))
         except EOFError:
-            pass
-    
-    print(len(flow_losses))
-    steps = np.arange(len(leaf_losses))
+            pass """
 
-    plt.figure()
-    plt.loglog(steps, leaf_losses, color="blue")
-    plt.loglog(steps, flow_losses, color="orange")
-    plt.fill_between(steps, leaf_losses_min, leaf_losses_max, color="blue", alpha=0.1)
-    plt.fill_between(steps, flow_losses_min, flow_losses_max, color="orange", alpha=0.1)
-
-    plt.ylim(0.0001,2000)
-    plt.yticks([0.0001,0.001,0.01,0.1,1,10,100,1000])
-
-    plt.legend(["leaf loss", "flow loss"])
-
-    plt.xlabel("SGD steps")
-    plt.ylabel("loss")
-    plt.title("Flow and leaf losses")
-
-    path = f'reports/figures/experiment_1'
-    os.makedirs(path,exist_ok=True)
-
-    filename = f"{path}/leafflowloss_92000.png"
-    plt.savefig(filename)
-    plt.show()
-    
-    
-    #print(data_losses)
 
     """ rewards = []
     with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
@@ -73,8 +36,38 @@ if __name__ == "__main__":
         except EOFError:
             pass
     print(len(rewards))
+    rids = np.arange(len(rewards))
     rewards = np.array(rewards)
-    best_mol = np.argmax(rewards)
+    rewards_T = lambda T : np.cumsum(rewards > T)
+    thresholds = [4,5,6,7,7.5]
+    fig, ax = plt.subplots(1,len(thresholds), figsize=(10,3))
+    for i, T in enumerate(thresholds):
+        ax[i].plot(rids, rewards_T(T))
+        ax[i].set_title(f"T={T}")
+    plt.show() """
+    
+    """ k = 1000
+    
+    top_k = np.sort(rewards[:k])
+
+    top_k_avg = [np.mean(top_k) for _ in range(k+1)]
+
+    for i in range(k+1,len(rewards)):
+        if rewards[i] > top_k[0]:
+            top_k[0] = rewards[i]
+        top_k_avg.append(np.mean(top_k))
+        top_k = np.sort(top_k)
+
+
+    
+    plt.semilogx(rids, top_k_avg)
+    plt.show() """
+    
+
+    
+    
+    """ best_mol = np.argmax(rewards)
+
 
     print(f"From results: {rewards[best_mol]}")
 
@@ -128,10 +121,10 @@ if __name__ == "__main__":
     model = GFlownet(nemb=256,
                      out_per_stem=105,
                      out_per_stop=1,
-                     num_conv_steps=10)
+                     num_conv_steps=10) """
     
     # get the latest model checkpoint - if none simply start from scratch
-    param_id = 1
+    """ param_id = 92000
     
     params = pickle.load(gzip.open(f"models/runs/experiment_1/params_{param_id}.pkl.gz"))
     
@@ -139,15 +132,16 @@ if __name__ == "__main__":
         a.data = torch.tensor(b, dtype=torch.double)
 
     device = torch.device("cpu")
-    for traj in trajs:
+    for traj in trajs[300000:300001]:
         mol = BlockMolecule()
         for (bi, si) in traj:
             mol.add_block(bi,si)
-        batch = [mol.to_block_graph(device=device) for mol in [mol]]
+            batch = [mol.to_block_graph(device=device) for mol in [mol]]
 
-        mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
-        mols_graph_batch.to(device)
-
-        print(model(mols_graph_batch)) """
+            mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
+            mols_graph_batch.to(device)
+            stem_out, mol_out, _ = model(mols_graph_batch)
+            print(stem_out)
+            print(mol_out) """
 
         
