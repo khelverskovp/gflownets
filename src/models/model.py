@@ -114,7 +114,7 @@ class GFlownet(nn.Module):
 
         # get output for each stem (out_per_mol long vector)
         # simple neural network with some hidden layers
-        stem_pred = self.stem2pred(stem_out_cat) # has shape (num_stems, out_per_stop) (105 in our case)
+        stem_pred = self.stem2pred(stem_out_cat) # has shape (num_stems, out_per_stem) (105 in our case)
 
         # compute value for stop action
         stop_pred = self.global2pred(gnn.global_mean_pool(out, graph.batch)) # has shape (batchsize, 1)
