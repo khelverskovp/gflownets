@@ -24,12 +24,15 @@ if __name__ == "__main__":
     make_reward_threshold_plot([-1,-2,-3,-4], experiment_id)
 
     # make rewards 
-    """ with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
+    smiles = []
+    with gzip.open("results/experiment_2/smiles.pkl.gz") as fr:
         try:
             while True:
-                rewards.extend(pickle.load(fr))
+                smiles.extend(pickle.load(fr))
         except EOFError:
-            pass """
+            pass
+
+    print(len(smiles))
 
 
     """ rewards = []

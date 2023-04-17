@@ -399,7 +399,7 @@ def main(cfg):
                     gzip.open(f'{results_path}/losses.pkl.gz', 'ab'))
     logger.info("Done saving!")
 
-    #time.sleep(10)
+    time.sleep(10)
 
         
     
