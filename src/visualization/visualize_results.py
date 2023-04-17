@@ -5,7 +5,7 @@ import time
 import numpy as np
 from src.utils.mols import BlockMolecule
 from src.utils.proxy import Proxy
-from src.utils.plots import make_leaf_flow_loss_plot
+from src.utils.plots import make_leaf_flow_loss_plot, make_reward_threshold_plot, make_top_k_plot
 from src.models.model import GFlownet
 from torch_geometric.data import Batch
 import matplotlib.pyplot as plt
@@ -18,6 +18,14 @@ if __name__ == "__main__":
 
     # make leaf loss plot
     make_leaf_flow_loss_plot(experiment_id)
+
+    # make reward threshold plot
+    thresholds = [5,6,7,7.5]
+    make_reward_threshold_plot(thresholds,experiment_id)
+
+    # make top k reward plot
+    k_values = [10,100,1000]
+    make_top_k_plot(k_values, experiment_id)
     
     # make rewards 
     """ with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:

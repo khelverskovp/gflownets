@@ -55,7 +55,22 @@ def main(input_filepath):
     temp[temp > 0] = 0
     vals = 4-(temp-target_norm[0])/target_norm[1]
     print(np.mean(4-(temp-target_norm[0])/target_norm[1]))
-    print(np.sum(vals >= 7))
+    print(np.sum(vals >= 8))
+
+    dtrue = {key: 0 for key in range(1,13)}
+    for blockidx in df.blockidxs:
+        dtrue[len(blockidx)] += 1
+
+    d = {key: 0 for key in range(1,13)}
+    for blockidx in df.blockidxs[vals >= 7.5]:
+        d[len(blockidx)] += 1
+    
+    print("Total:",dtrue)
+    print("Total with reward > 7.5:", d)
+
+    d = {key: round(val / dtrue[key] * 100,3) for key, val in d.items()}
+
+    print("Percentages:",d)
 
     pdf, bins = np.histogram(vals, density=True)
     pdf = pdf / np.sum(pdf)
