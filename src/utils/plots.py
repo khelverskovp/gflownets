@@ -26,16 +26,16 @@ def make_leaf_flow_loss_plot(experiment_id):
         try:
             while True:
                 data = pickle.load(fr)
-                leaf_losses.extend(data["leaf_losses"])
-                leaf_losses_min.extend(data["leaf_losses_min"])
-                leaf_losses_max.extend(data["leaf_losses_max"])
+                leaf_losses.extend(data["term_losses"])
+                leaf_losses_min.extend(data["term_losses_min"])
+                leaf_losses_max.extend(data["term_losses_max"])
                 flow_losses.extend(data["flow_losses"])
                 flow_losses_min.extend(data["flow_losses_min"])
                 flow_losses_max.extend(data["flow_losses_max"])
         except EOFError:
             pass
 
-    steps = np.arange(len(leaf_losses))
+    steps = np.arange(len(leaf_losses)) + 1
 
     plt.figure()
     plt.loglog(steps, leaf_losses, color="blue")
@@ -70,7 +70,7 @@ def make_rewards_plot(experiment_id):
             pass
 
     # make a plot of reward on y axis vs molecules generated (length of rewards list) on x axis
-    rids = np.arange(len(rewards))
+    rids = np.arange(len(rewards)) + 1
     rewards = np.array(rewards)
 
     # plot moving average on top of rewards
@@ -89,7 +89,7 @@ def make_rewards_plot(experiment_id):
 
     
 
-    file_id = rids
+    file_id = len(rids)
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
 
@@ -119,7 +119,7 @@ def make_reward_threshold_plot(thresholds, experiment_id):
 
     # change to numpy array
     rewards = np.array(rewards)
-    rids = np.arange(len(rewards))
+    rids = np.arange(len(rewards)) + 1
 
     # compute number of molecules with rewards > T
     rewards_T = lambda T : np.cumsum(rewards > T)

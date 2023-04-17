@@ -15,6 +15,7 @@ import os
 import pickle
 import gzip
 import time
+import pdb
 
 from src.models.model import GFlownet
 from src.utils.mols import BlockDictionary, BlockMolecule, MoleculeMDP
@@ -107,6 +108,7 @@ def main(cfg):
         # if we already have a model for the specific experiment that has been fully trained
         # dont train further
         if param_id == total_epochs:
+            logger.info("TRAINING IS COMPLETE!")
             time.sleep(10000)
             raise Exception("TRAINING IS COMPLETE!")
         
@@ -131,65 +133,104 @@ def main(cfg):
     # make lists to store losses
     losses = []
 
-    leaf_losses = []
-    leaf_losses_min = []
-    leaf_losses_max = []
+    term_losses = []
+    term_losses_min = []
+    term_losses_max = []
     flow_losses = []
     flow_losses_min = []
     flow_losses_max = []
 
-    # list to store rewards and trajectories
+    # list to store rewards, trajectories and smiles strings
     rewards = []
     trajectories = []
+    smiles = []
+    
     
 
     # define training loop
     for epoch in range(save_freq):
-        if (epoch+param_id) % 100 == 0:
+        if (epoch+param_id) >= 0:
             logger.info(epoch+param_id)
-        # create a minibatch of empty molecules
-        mols = [BlockMolecule() for _ in range(mbsize)]
-        rs = [0 for _ in range(mbsize)]
-        trajs = [[] for _ in range(mbsize)]
 
-        batch = [mol.to_block_graph(device=device) for mol in mols]
+        # keep track of terminal and internal transition losses
+        term_loss = 0
+        flow_loss = 0
 
-        mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
-        mols_graph_batch.to(device)
-
-        # check which molecules are done
-        done = [0 for _ in range(mbsize)]
-
-        # compute outflow from initial states
-        out_flow_stem, out_flow_stop, stem_batch = model(mols_graph_batch)
-
-        # make stop action probability very small when the molecule is empty
-        out_flow_stop = out_flow_stop * 0 - 1000
+        # keep track of max and min term and flow losses
+        min_term_loss = np.inf
+        max_term_loss = -np.inf
+        min_flow_loss = np.inf
+        max_flow_loss = -np.inf
         
-        # combine flows for each molecule
-        out_flow_prediction = [torch.concatenate((out_flow_stop[i],out_flow_stem[stem_batch == i].reshape(-1))) for i in range(mbsize)]
+        # number of terminal transitions will be mbsize
+        n_term_transitions = mbsize
 
-        leaf_loss = []
-        flow_loss = []
+        # number of internal transitions will be variable - keep counter
+        n_flow_transitions = 0
 
-        minibatch_loss = 0
+        for i in range(mbsize):
+            # create empty molecule
+            mol = BlockMolecule()
 
-        for t in range(max_blocks):
-            # get actions from out flows     
-            actions = [Categorical(logits=logits).sample().item() for logits in out_flow_prediction]
+            # keep track of trajectory
+            traj = []
+
+            # boolean to check if we are done
+            terminal_state = False
             
-            for i in range(mbsize):
-                if done[i]:
-                    continue
-                # with some probability choose random action - exploration
+            # get initial output from model
+            # turn into block graph batch format
+            graph = mol.to_block_graph(device=device)
+
+            mols_graph_batch = Batch.from_data_list([graph])
+            mols_graph_batch.to(device)
+
+            # get output from model
+            out_flow_stem, out_flow_stop, _ = model(mols_graph_batch)
+            
+            # loop over trajectory
+            for t in range(max_blocks):
+                # make probability of taking stop action very small for t < min_blocks
+                if t < min_blocks:
+                    out_flow_stop = out_flow_stop * 0 - 1000
+
+                # put unnormalized log probabilities into list
+                logits = torch.concatenate([out_flow_stop.reshape(-1), out_flow_stem.reshape(-1)])
+                
+                # choose action based on logits
+                action = Categorical(logits=logits).sample().item()
+                    
+                # take random action with probability random_action_prob - exploration
                 if random.random() < random_action_prob:
-                    action = random.randint(0,out_flow_prediction[i].shape[0]-1)
+                    # only include stop action 0 if t >= min_blocks
+                    action = random.randint(int(t < min_blocks),logits.shape[0]-1)
+                
+                # check if we choose to stop
+                if action == 0 and t >= min_blocks:
+                    # compute reward from proxy
+                    reward_true = proxy([mol])
+                    # match reward to specific molecule
+                    rewards.append(reward_true.cpu().item())
+                    # we transform the reward as (R(x)/T)^beta
+                    # make sure that R>=R_min, i.e. clip value
+                    reward = (max(R_min,reward_true.item()) / reward_T)**reward_beta
+
+                    # if we chose to stop the only incoming flow will be out_flow_stop
+                    in_flow = torch.exp(out_flow_stop[0])
+
+                    # outflow is zero for terminal states
+                    out_flow = torch.tensor([0], device=device)
+
+                    # add stop action to trajectory
+                    traj.append((-1,0))
+
+                    # add smiles string
+                    smiles.append(mol.get_smiles())
+
+                    # state that we are done
+                    terminal_state = True
                 else:
-                    action = actions[i]
-                # stop action or if the molecule cannot be expanded any further
-                if (action == 0 or len(mols[i].stems) == 0) and t >= min_blocks:
-                    done[i] = t
-                else:
+                    # execute action
                     # every action index is shifted with 1 due to the stop action = 0
                     # therefore in order to get the correct value we subtract 1
                     action = max(0,action-1)
@@ -198,104 +239,135 @@ def main(cfg):
                     stemidx = action // num_out_per_stem
 
                     # add block to molecule
-                    mols[i].add_block(blockidx=blockidx, stemidx=stemidx)
+                    mol.add_block(blockidx=blockidx, stemidx=stemidx)
 
-                    # add action to trajectory stat
-                    trajs[i].append((blockidx, stemidx))
+                    # add action to trajectories
+                    traj.append((blockidx,stemidx))
 
-            # update batch
-            batch = [mol.to_block_graph(device=device) for mol in mols]
+                    # check if we are forced to stop
+                    if len(mol.blockidxs) > 0 and (len(mol.stems) == 0 or t == max_blocks-1):
+                        # compute reward from proxy
+                        reward_true = proxy([mol])
+                        # match reward to specific molecule
+                        rewards.append(reward_true.cpu().item())
+                        # we transform the reward as (R(x)/T)^beta
+                        # make sure that R>=R_min, i.e. clip value
+                        reward = (max(R_min,reward_true.item()) / reward_T)**reward_beta
 
-            mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
-            mols_graph_batch.to(device)
+                        # if we are forced to stop the inflow will be sum of flows from all the parents
+                        # compute parent states for each molecule        
+                        parents = mdp.parents(mol)
 
-            # compute outflow from new state
-            out_flow_stem, out_flow_stop, stem_batch = model(mols_graph_batch)
+                        # compute inflow from parents
+                        in_flow = 0
+                        for parent, (blockidx, stemidx) in parents:
+                            # turn into block graph
+                            parent_graph = parent.to_block_graph(device=device)
+                            parent_graph_batch = Batch.from_data_list([parent_graph])
+                            parent_graph_batch.to(device)
 
-            # make stop action probability very small when the molecule is too small
-            if t < min_blocks:
-                out_flow_stop = out_flow_stop * 0 - 1000
+                            # compute out flow from parent
+                            out_flow_parent, _, _ = model(parent_graph_batch)
+
+                            # add the flow for the specific action and do exp(result) because the model outputs logits
+                            in_flow += torch.exp(out_flow_parent[stemidx, blockidx])
+
+                        # outflow is zero for terminal states
+                        out_flow = torch.tensor([0], device=device)
+                        
+                        # add stop action to trajectory
+                        traj.append((-1,0))
+
+                        # add smiles string
+                        smiles.append(mol.get_smiles())
+
+                        # state that we are done
+                        terminal_state = True
+                    else:
+                        # reward is 0 for internal states
+                        reward = 0
+
+                        # compute parent states for each molecule        
+                        parents = mdp.parents(mol)
+
+                        # compute inflow from parents
+                        in_flow = 0
+                        for parent, (blockidx, stemidx) in parents:
+                            # turn into block graph
+                            parent_graph = parent.to_block_graph(device=device)
+                            parent_graph_batch = Batch.from_data_list([parent_graph])
+                            parent_graph_batch.to(device)
+
+                            # compute out flow from parent
+                            out_flow_parent, _, _ = model(parent_graph_batch)
+
+                            # add the flow for the specific action and do exp(result) because the model outputs logits
+                            in_flow += torch.exp(out_flow_parent[stemidx, blockidx])
+
+                        # compute out flow
+                        # turn into block graph batch format
+                        graph = mol.to_block_graph(device=device)
+
+                        mols_graph_batch = Batch.from_data_list([graph])
+                        mols_graph_batch.to(device)
+
+                        # get output from model
+                        out_flow_stem, out_flow_stop, _ = model(mols_graph_batch)
+
+                        # out_flow is simply the sum of the model outputs
+                        out_flow = torch.exp(out_flow_stem).sum() + torch.exp(out_flow_stop).sum()
+
+                # compute log of inflows and outflows with log
+                in_flow = torch.log(epsilon_loss + in_flow)
             
-            # combine flows for each molecule
-            out_flow_prediction = [torch.concatenate((out_flow_stop[i],out_flow_stem[stem_batch == i].reshape(-1))) for i in range(mbsize)]
-            
-            for i in range(mbsize):
-                # dont include molecules that terminated in previous steps
-                if done[i] != t and done[i]:
-                    continue
-                # compute parent states for each molecule        
-                parents = mdp.parents(mols[i])
+                out_flow = torch.log(epsilon_loss + reward + out_flow)
 
-                # compute inflow from parents
-                parent_flow_prediction = 0
-                for parent, (blockidx, stemidx) in parents:
-                    parent_graph = parent.to_block_graph(device=device)
-                    parent_graph_batch = Batch.from_data_list([parent_graph])
-                    parent_graph_batch.to(device)
+                # compute squared difference
+                loss = (in_flow - out_flow).pow(2)
 
-                    in_flow_stem, _, _ = model(parent_graph_batch)
-
-                    parent_flow_prediction += torch.exp(in_flow_stem[stemidx, blockidx])
-                
-                # if a molecule was done being build in this iteration compute reward
-                if (done[i] == t and done[i]) or (t == max_blocks-1 and not done[i]):
-                    # get reward from proxy
-                    reward_true = proxy([mols[i]])
-                    # match reward to specific molecule
-                    rs[i] = reward_true.cpu().item()
-                    # log reward
-                    # wandb.log({"Reward": rewards[-1]})
-                    # we transform the reward as (R(x)/T)^beta
-                    # make sure that R>=R_min, i.e. clip value
-                    reward = (max(R_min,reward_true.item()) / reward_T)**reward_beta
-                    out_flow_prediction[i] = torch.zeros(out_flow_prediction[i].shape[0])
+                # multiply loss with lambda if terminal state
+                if terminal_state:
+                    term_loss += loss * lambda_T
+                    
+                    # update min and max values
+                    min_term_loss = min(min_term_loss, term_loss.cpu().item())
+                    max_term_loss = max(max_term_loss, term_loss.cpu().item())
+                    break
                 else:
-                    # set reward to zero
-                    reward = 0
+                    flow_loss += loss
 
-                # use loss equation from paper that utilizes log sum exponentiations
-                in_flow_prediction_mol = torch.log(epsilon_loss + parent_flow_prediction)
-                #import pdb
-                #pdb.set_trace()
-                out_flow_prediction_mol = torch.log(epsilon_loss + reward + torch.exp(out_flow_prediction[i]).sum())
+                    # update min and max values
+                    min_flow_loss = min(min_flow_loss, flow_loss.cpu().item())
+                    max_flow_loss = max(max_flow_loss, flow_loss.cpu().item())
 
-                # update minibatch loss
-                loss = (in_flow_prediction_mol - out_flow_prediction_mol)**2
-                # multiply losses for terminal states with factor lambda
-                if reward != 0:
-                    loss *= lambda_T
-                    leaf_loss.append(loss.cpu().item())
-                else:
-                    flow_loss.append(loss.cpu().item())               
+                    # add to internal transition counter
+                    n_flow_transitions += t
                 
-                minibatch_loss += loss
+                # add trajectory to list
+                trajectories.append(traj)
+                
+        # take average of terminal and internal flow loss
+        term_loss /= n_term_transitions
+        flow_loss /= n_flow_transitions
+
+        # compute total minibatch loss
+        minibatch_loss = term_loss + flow_loss
+
+        opt.zero_grad()
+        minibatch_loss.backward()
+        opt.step()
 
         # log losses
         losses.append(minibatch_loss.cpu().item())
 
-        leaf_losses.append(np.mean(leaf_loss))
-        leaf_losses_min.append(np.min(leaf_loss))
-        leaf_losses_max.append(np.max(leaf_loss))
-        flow_losses.append(np.mean(flow_loss))
-        flow_losses_min.append(np.min(flow_loss))
-        flow_losses_max.append(np.max(flow_loss))
+        # log terminal and flow losses
+        term_losses.append(term_loss.cpu().item())
+        term_losses_min.append(min_term_loss)
+        term_losses_max.append(max_term_loss)
+        flow_losses.append(flow_loss.cpu().item())
+        flow_losses_min.append(min_flow_loss)
+        flow_losses_max.append(max_flow_loss)
 
-        # log sampled mols information
-        #sm = list(zip(rs,mols,trajs))
-        rewards.extend(rs)
-        trajectories.extend(trajs)
-
-        # update gradients and reset minibatch loss
-        minibatch_loss.backward()
-        opt.step()
-        opt.zero_grad()
-        minibatch_loss = 0
-
-        # wandb.log({"Leaf loss": leaf_losses[-1]})
-        # wandb.log({"Flow loss": flow_losses[-1]})
-        # wandb.log({"Loss": losses[-1]})
-        # wandb.log({"Epoch": epoch})
-        # wandb.watch(model)
 
     logger.info("Beginning saving process!")
 
@@ -311,11 +383,14 @@ def main(cfg):
     pickle.dump(trajectories,
                 gzip.open(f"{results_path}/trajectories.pkl.gz", 'ab'))
     
+    pickle.dump(smiles,
+                gzip.open(f"{results_path}/smiles.pkl.gz", 'ab'))
+    
     # log losses
     pickle.dump({'losses': losses,
-                 'leaf_losses': leaf_losses,
-                 'leaf_losses_min': leaf_losses_min,
-                 'leaf_losses_max': leaf_losses_max,
+                 'term_losses': term_losses,
+                 'term_losses_min': term_losses_min,
+                 'term_losses_max': term_losses_max,
                  'flow_losses': flow_losses,
                  'flow_losses_min': flow_losses_min,
                  'flow_losses_max': flow_losses_max,
@@ -324,31 +399,7 @@ def main(cfg):
                     gzip.open(f'{results_path}/losses.pkl.gz', 'ab'))
     logger.info("Done saving!")
 
-    time.sleep(10)
-
-    """ steps = np.arange(len(leaf_losses))
-    mols = np.arange(len(rewards))
-
-    path = f'reports/figures/{cfg_exp.hp.run_name}'
-    os.makedirs(path,exist_ok=True)
-
-    plt.figure()
-    plt.plot(steps, leaf_losses, color="blue")
-    plt.plot(steps, flow_losses, color="orange")
-    plt.fill_between(steps, leaf_losses_min, leaf_losses_max, color="blue", alpha=0.1)
-    plt.fill_between(steps, flow_losses_min, flow_losses_max, color="orange", alpha=0.1)
-
-    plt.legend(["leaf loss", "flow loss"])
-
-    plt.xlabel("SGD steps")
-    plt.ylabel("loss")
-    plt.title("Flow and leaf losses")
-
-    filename = f"{path}/leafflowloss.png"
-    plt.savefig(filename) """
-
-    
-
+    #time.sleep(10)
 
         
     
