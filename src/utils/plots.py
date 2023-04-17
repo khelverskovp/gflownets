@@ -53,3 +53,42 @@ def make_leaf_flow_loss_plot(experiment_id):
     file_id = len(steps)
     filename = f"{figures_path}/leafflowloss_{file_id}.png"
     plt.savefig(filename)
+
+def make_rewards_plot(experiment_id):
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    # make a plot of reward on y axis vs molecules generated (length of rewards list) on x axis
+    rids = np.arange(len(rewards))
+    rewards = np.array(rewards)
+
+    # plot moving average on top of rewards
+    rewards_ma = np.convolve(rewards, np.ones((100,))/100, mode='valid')
+    rids_ma = np.arange(len(rewards_ma))
+
+    plt.figure()
+    plt.semilogx(rids, rewards)
+    plt.semilogx(rids_ma, rewards_ma)
+    plt.xlabel("Molecules generated")
+    plt.ylabel("Reward")
+    plt.title("Reward")
+
+    #add legends
+    plt.legend(["Reward", "Moving average"])
+
+    
+
+    file_id = rids
+    figures_path = f"reports/figures/{experiment_id}"
+    os.makedirs(figures_path,exist_ok=True)
+
+
+    filename = f"{figures_path}/rewards_{file_id}.png"
+    plt.savefig(filename)
+
+    
