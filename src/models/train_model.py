@@ -145,8 +145,6 @@ def main(cfg):
     trajectories = []
     smiles = []
     
-    
-
     # define training loop
     for epoch in range(save_freq):
         if (epoch+param_id) % 100 == 0:
@@ -207,6 +205,7 @@ def main(cfg):
                 
                 # check if we choose to stop
                 if action == 0 and t >= min_blocks:
+                    #print("a")
                     # compute reward from proxy
                     reward_true = proxy([mol])
                     # match reward to specific molecule
@@ -246,6 +245,7 @@ def main(cfg):
 
                     # check if we are forced to stop
                     if len(mol.blockidxs) > 0 and (len(mol.stems) == 0 or t == max_blocks-1):
+                        #print("b")
                         # compute reward from proxy
                         reward_true = proxy([mol])
                         # match reward to specific molecule
@@ -281,6 +281,7 @@ def main(cfg):
                         # state that we are done
                         terminal_state = True
                     else:
+                        #print("c")
                         # reward is 0 for internal states
                         reward = 0
 
@@ -335,19 +336,19 @@ def main(cfg):
                     fl = loss
                     flow_loss += fl
 
+                    # add to internal transition counter
+                    n_flow_transitions += 1
+
                     # update min and max values
                     min_flow_loss = min(min_flow_loss, fl.cpu().item())
                     max_flow_loss = max(max_flow_loss, fl.cpu().item())
 
-                    # add to internal transition counter
-                    n_flow_transitions += t
-                
             # add trajectory to list
             trajectories.append(traj)
                 
         # take average of terminal and internal flow loss
-        term_loss /= n_term_transitions
-        flow_loss /= n_flow_transitions
+        term_loss /= n_term_transitions + 1e-20
+        flow_loss /= n_flow_transitions + 1e-20
 
         # compute total minibatch loss
         minibatch_loss = term_loss + flow_loss
@@ -355,7 +356,7 @@ def main(cfg):
         opt.zero_grad()
         minibatch_loss.backward()
         opt.step()
-
+    
         # log losses
         losses.append(minibatch_loss.cpu().item())
 
@@ -414,5 +415,5 @@ if __name__ == '__main__':
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables
     load_dotenv(find_dotenv())
-
+    
     main()
