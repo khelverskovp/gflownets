@@ -149,7 +149,7 @@ def main(cfg):
 
     # define training loop
     for epoch in range(save_freq):
-        if (epoch+param_id) >= 0:
+        if (epoch+param_id) % 100 == 0:
             logger.info(epoch+param_id)
 
         # keep track of terminal and internal transition losses
@@ -254,10 +254,10 @@ def main(cfg):
                         # make sure that R>=R_min, i.e. clip value
                         reward = (max(R_min,reward_true.item()) / reward_T)**reward_beta
 
-                        # if we are forced to stop the inflow will be sum of flows from all the parents
                         # compute parent states for each molecule        
                         parents = mdp.parents(mol)
 
+                        # if we are forced to stop the inflow will be sum of flows from all the parents
                         # compute inflow from parents
                         in_flow = 0
                         for parent, (blockidx, stemidx) in parents:
@@ -275,9 +275,6 @@ def main(cfg):
                         # outflow is zero for terminal states
                         out_flow = torch.tensor([0], device=device)
                         
-                        # add stop action to trajectory
-                        traj.append((-1,0))
-
                         # add smiles string
                         smiles.append(mol.get_smiles())
 
@@ -327,24 +324,26 @@ def main(cfg):
 
                 # multiply loss with lambda if terminal state
                 if terminal_state:
-                    term_loss += loss * lambda_T
+                    tl = loss * lambda_T
+                    term_loss += tl
                     
                     # update min and max values
-                    min_term_loss = min(min_term_loss, term_loss.cpu().item())
-                    max_term_loss = max(max_term_loss, term_loss.cpu().item())
+                    min_term_loss = min(min_term_loss, tl.cpu().item())
+                    max_term_loss = max(max_term_loss, tl.cpu().item())
                     break
                 else:
-                    flow_loss += loss
+                    fl = loss
+                    flow_loss += fl
 
                     # update min and max values
-                    min_flow_loss = min(min_flow_loss, flow_loss.cpu().item())
-                    max_flow_loss = max(max_flow_loss, flow_loss.cpu().item())
+                    min_flow_loss = min(min_flow_loss, fl.cpu().item())
+                    max_flow_loss = max(max_flow_loss, fl.cpu().item())
 
                     # add to internal transition counter
                     n_flow_transitions += t
                 
-                # add trajectory to list
-                trajectories.append(traj)
+            # add trajectory to list
+            trajectories.append(traj)
                 
         # take average of terminal and internal flow loss
         term_loss /= n_term_transitions
