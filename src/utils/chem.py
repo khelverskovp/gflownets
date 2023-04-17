@@ -151,5 +151,6 @@ def mol_to_graph_backend(atmfeat, bond, bondfeat):
     return data
 
 
+
 if __name__ == "__main__":
     print(onehot([0,0,0,0,0,1,1,1,1,2,2,2,2,3], 4))

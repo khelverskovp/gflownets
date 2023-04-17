@@ -6,7 +6,6 @@ import numpy as np
 from src.utils.mols import BlockMolecule
 from src.utils.proxy import Proxy
 from src.utils.plots import make_leaf_flow_loss_plot
-from src.utils.plots import make_rewards_plot
 from src.models.model import GFlownet
 from torch_geometric.data import Batch
 import matplotlib.pyplot as plt
@@ -19,9 +18,6 @@ if __name__ == "__main__":
 
     # make leaf loss plot
     make_leaf_flow_loss_plot(experiment_id)
-
-    # make rewards plot
-    make_rewards_plot(experiment_id)
     
     # make rewards 
     """ with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
