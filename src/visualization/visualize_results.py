@@ -14,26 +14,27 @@ import pandas as pd
 
 if __name__ == "__main__":
     # experiment_id
-    experiment_id = "experiment_2"
+    experiment_id = "experiment_1"
 
     # make leaf loss plot
     make_leaf_flow_loss_plot(experiment_id)
     
     make_rewards_plot(experiment_id)
 
-    make_reward_threshold_plot([-1,-2,-3,-4], experiment_id)
+    make_reward_threshold_plot([5,6,7,7.5], experiment_id)
 
     # make rewards 
-    smiles = []
-    with gzip.open("results/experiment_2/smiles.pkl.gz") as fr:
+    rewards = []
+    with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
         try:
             while True:
-                smiles.extend(pickle.load(fr))
+                rewards.extend(pickle.load(fr))
         except EOFError:
             pass
 
-    print(len(smiles))
-
+    print(np.max(rewards))
+    print(len(rewards))
+    print(np.mean(rewards))
 
     """ rewards = []
     with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
@@ -99,25 +100,18 @@ if __name__ == "__main__":
     plt.xlabel('Value')
     plt.ylabel('Probability Density')
     plt.title('Empirical PDF')
-    plt.show()
+    plt.show() """
 
-    trajs = []
-    with gzip.open("results/experiment_1/trajectories.pkl.gz") as fr:
-        try:
-            while True:
-                trajs.extend(pickle.load(fr))
-        except EOFError:
-            pass
+
     
-    
-    proxy = Proxy(device=torch.device("cpu"))
+    """ proxy = Proxy(device=torch.device("cpu"))
     mol = BlockMolecule()
     for (bi, si) in trajs[best_mol]:
         mol.add_block(bi,si)
     mol.draw_mol_to_file("worst_mol",highlightBonds=True)
     print(f"From proxy using trajectory: {proxy([mol]).item()}") """
     
-    """ trajs = []
+    trajs = []
     with gzip.open("results/experiment_1/trajectories.pkl.gz") as fr:
         try:
             while True:
@@ -128,10 +122,10 @@ if __name__ == "__main__":
     model = GFlownet(nemb=256,
                      out_per_stem=105,
                      out_per_stop=1,
-                     num_conv_steps=10) """
+                     num_conv_steps=10)
     
     # get the latest model checkpoint - if none simply start from scratch
-    """ param_id = 92000
+    param_id = 15000
     
     params = pickle.load(gzip.open(f"models/runs/experiment_1/params_{param_id}.pkl.gz"))
     
@@ -139,16 +133,18 @@ if __name__ == "__main__":
         a.data = torch.tensor(b, dtype=torch.double)
 
     device = torch.device("cpu")
-    for traj in trajs[300000:300001]:
-        mol = BlockMolecule()
-        for (bi, si) in traj:
-            mol.add_block(bi,si)
-            batch = [mol.to_block_graph(device=device) for mol in [mol]]
+    
+    mol = BlockMolecule()
+    for (bi, si) in trajs[-1]:
+        mol.add_block(bi,si)
+        batch = [mol.to_block_graph(device=device) for mol in [mol]]
 
-            mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
-            mols_graph_batch.to(device)
-            stem_out, mol_out, _ = model(mols_graph_batch)
-            print(stem_out)
-            print(mol_out) """
+        mols_graph_batch = Batch.from_data_list([graph for graph in batch if graph is not None])
+        mols_graph_batch.to(device)
+        stem_out, mol_out, _ = model(mols_graph_batch)
+        #print(stem_out)
+        #print(mol_out)
+        #print(torch.exp(torch.max(stem_out)).sum().item())
+        #time.sleep(5)
 
         

@@ -44,7 +44,7 @@ def make_leaf_flow_loss_plot(experiment_id):
     plt.fill_between(steps, flow_losses_min, flow_losses_max, color="orange", alpha=0.1)
 
     plt.ylim(0.00001,6000)
-    plt.yticks([0.0001,0.001,0.01,0.1,1,10,100,1000])
+    plt.yticks([0.001,0.01,0.1,1,10,100,1000])
 
     plt.legend(["leaf loss", "flow loss"])
 
@@ -52,7 +52,7 @@ def make_leaf_flow_loss_plot(experiment_id):
     plt.ylabel("loss")
     plt.title("Flow and leaf losses")
 
-    figures_path = f"reports/figures/{experiment_id}"
+    figures_path = f"reports/figures/{experiment_id}/{int(len(steps))}"
     os.makedirs(figures_path,exist_ok=True)
 
     # save file
@@ -90,7 +90,7 @@ def make_rewards_plot(experiment_id):
     
 
     file_id = len(rids)
-    figures_path = f"reports/figures/{experiment_id}"
+    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
     os.makedirs(figures_path,exist_ok=True)
 
 
@@ -133,7 +133,7 @@ def make_reward_threshold_plot(thresholds, experiment_id):
         ax.set_ylabel(f"# of modes with R>{T}")
         ax.grid(True)
     
-    figures_path = f"reports/figures/{experiment_id}"
+    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
     os.makedirs(figures_path,exist_ok=True)
 
     fig.suptitle(f"Number of high-reward molecules with different thresholds")
@@ -211,6 +211,7 @@ if __name__ == "__main__":
     begin_time = time.time()
     smiles = []
     tl = {key: 0 for key in range(2,9)}
+    count = np.zeros(len(trajs)+1)
     for i, traj in enumerate(trajs):
         """ if i % 100 == 0:
             print(i)
@@ -222,11 +223,17 @@ if __name__ == "__main__":
         if smiles[-1] == "CC(O)C1CCCC1":
             print(traj) """
         tl[len(traj)] += 1
+        count[i+1] = traj[-1][0] == -1
+    
+    
+    print(np.cumsum(count))
+    plt.plot(np.arange(len(count)),np.cumsum(count))
+    plt.show()
     
     print("Blocksize for generated molecules:", tl)
     
     #print(time.time()-begin_time)
-    d = {key: 0 for key in np.unique(smiles)}
+    """ d = {key: 0 for key in np.unique(smiles)}
     
     for i in range(len(smiles)):
         d[smiles[i]] += 1
@@ -234,7 +241,7 @@ if __name__ == "__main__":
     tuples = [(d[key],key) for key in np.unique(smiles)]
     tuples.sort()
     sorted = list(reversed(tuples))
-    #print(sorted)
+    #print(sorted) """
     
     
     
