@@ -9,7 +9,9 @@ import torch
 from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol, MurckoScaffoldSmiles
 import time
+import pandas as pd
 
+# figure 18 (done)
 def make_leaf_flow_loss_plot(experiment_id):
     # path to loss file
     losses_path = f'results/{experiment_id}'
@@ -60,6 +62,7 @@ def make_leaf_flow_loss_plot(experiment_id):
     filename = f"{figures_path}/leafflowloss_{file_id}.png"
     plt.savefig(filename)
 
+# Rewards plot med moving average (done)
 def make_rewards_plot(experiment_id):
     rewards = []
     with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
@@ -98,9 +101,7 @@ def make_rewards_plot(experiment_id):
     plt.savefig(filename)
 
     
-
-
-
+# figure 5 (without bemis murcko with 4 thresholds)
 def make_reward_threshold_plot(thresholds, experiment_id):
     # only allow for 4 thresholds
     assert len(thresholds) == 4, "Please give 4 thresholds for plot to work!"
@@ -144,6 +145,7 @@ def make_reward_threshold_plot(thresholds, experiment_id):
     filename = f"{figures_path}/reward_threshold_plot_{file_id}.png"
     plt.savefig(filename)
 
+# figure 4 (not unique molecules)
 def make_top_k_plot(k_values, experiment_id):
     # only allow for 4 thresholds
     assert len(k_values) == 3, "Please give 3 thresholds for plot to work!"
@@ -196,6 +198,110 @@ def make_top_k_plot(k_values, experiment_id):
     filename = f"{figures_path}/top_k_reward_plot_{file_id}.png"
     plt.savefig(filename)
 
+# figure 3 (empirical density of rewards)
+# for beta = 1, beta = 4 and beta = 10 and proxy dataset
+def make_empirical_density_plot(experiment_id, betas):
+    # load data points
+    filename = "docked_mols.csv"
+    path = f"data/processed/{filename}"
+
+    df = pd.read_csv(path)
+
+    # get rewards for dataset
+    df_rewards = df["dockscore"].values
+
+    
+    #get rewards for experiment
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    # change to numpy array
+    rewards = np.array(rewards)
+
+    linestyles = [':','--','-']
+
+    # for each beta in betas add a legend \beta$ = value of beta 
+   # legends = [f"\beta$={beta}" for beta in betas]
+    legends = [r'$\beta$ = 10', r'$\beta$ = 1', r'$\beta$ = 4', 'proxy dataset']
+
+    # and add "proxy dataset to the legend"
+    legends.append("proxy dataset")
+
+    pdf_proxy, bins_proxy = np.histogram(df_rewards, density=True)
+    pdf_proxy = pdf_proxy / np.sum(pdf_proxy)
+
+    # plot pdf_proxy and pdf for each beta. The x axis is 0-8 (R(x)) and the y axis is the probability density
+    plt.figure()
+    plt.xlim(0,8)
+    #make xlim 0, 2, 4, 6, 8
+    plt.xticks([0,2,4,6,8])
+
+    # plot pdf_proxy
+    plt.plot(bins_proxy[:-1], pdf_proxy, label=legends[-1])
+
+    # plot pdf for each beta
+    for beta, ls, lg in zip(betas, linestyles, legends[:-1]):
+        # get pdf for beta
+        pdf_beta, bins_beta = np.histogram(rewards, density=True)
+        pdf_beta = pdf_beta / np.sum(pdf_beta)
+
+        # plot pdf for beta
+        plt.plot(bins_beta[:-1], pdf_beta, ls, label=lg)
+    
+
+    plt.xlabel("reward")
+    plt.ylabel("empirical density")
+    plt.title("Empirical density of rewards",fontsize=14)
+    plt.legend()
+    figures_path = f"reports/figures/{experiment_id}"
+    os.makedirs(figures_path,exist_ok=True)
+
+    # save file
+    file_id = len(rewards)
+    filename = f"{figures_path}/empirical_density_plot_{file_id}.png"
+    plt.savefig(filename)
+
+
+
+
+def make_empirical_density_proxy():
+    # load data points
+    filename = "docked_mols.csv"
+    path = f"data/processed/{filename}"
+
+    df = pd.read_csv(path)
+
+    # get rewards for dataset
+    df_rewards = df["dockscore"].values
+
+    pdf_proxy, bins_proxy = np.histogram(df_rewards, density=True)
+    pdf_proxy = pdf_proxy / np.sum(pdf_proxy)
+
+    # plot pdf_proxy
+    plt.figure()
+    plt.plot(bins_proxy[:-1], pdf_proxy, label="proxy dataset")
+    plt.xlabel("reward")
+    plt.ylabel("empirical density")
+
+    plt.title("Empirical density of rewards",fontsize=14)
+    plt.legend()
+    figures_path = f"reports/figures/proxy"
+    os.makedirs(figures_path,exist_ok=True)
+
+    # save file
+    file_id = len(df_rewards)
+    filename = f"{figures_path}/empirical_density_plot_proxy_{file_id}.png"
+    plt.savefig(filename)
+
+
+    
+
+
 if __name__ == "__main__":
     experiment_id = "experiment_1"
     # path to rewards file
@@ -245,7 +351,6 @@ if __name__ == "__main__":
     
     
     
-
 
 
     
