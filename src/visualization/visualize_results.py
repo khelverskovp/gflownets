@@ -16,8 +16,8 @@ if __name__ == "__main__":
     # experiment_id
     experiment_id = "experiment_3"
 
-    # make leaf loss plot
-    make_leaf_flow_loss_plot(experiment_id)
+    with gzip.open("data/processed/rewards_proxy_dataset.pkl.gz") as fr:
+        rewards_proxy = pickle.load(fr)
     
     make_rewards_plot(experiment_id)
 
@@ -37,6 +37,8 @@ if __name__ == "__main__":
     print(np.mean(rewards))
     
     """ hp = None
+=======
+    print(rewards_proxy)
 
     with gzip.open(f"results/{experiment_id}/losses.pkl.gz") as fr:
         try:
@@ -75,7 +77,7 @@ if __name__ == "__main__":
             d[len(trajs[i])] += 1
             #print(len(trajs[i]))
     print(d) """
-    """ rewards = []
+    rewards = []
     with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
         try:
             while True:
@@ -91,7 +93,7 @@ if __name__ == "__main__":
     for i, T in enumerate(thresholds):
         ax[i].plot(rids, rewards_T(T))
         ax[i].set_title(f"T={T}")
-    plt.show() """
+    plt.show()
     
     """ k = 1000
     
@@ -149,6 +151,7 @@ if __name__ == "__main__":
         mol.add_block(bi,si)
     mol.draw_mol_to_file("worst_mol",highlightBonds=True)
     print(f"From proxy using trajectory: {proxy([mol]).item()}") """
+
     
     trajs = []
     with gzip.open("results/experiment_1/trajectories.pkl.gz") as fr:
@@ -186,4 +189,3 @@ if __name__ == "__main__":
         #print(torch.exp(torch.max(stem_out)).sum().item())
         #time.sleep(5)
 
-        
