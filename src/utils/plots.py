@@ -315,6 +315,7 @@ if __name__ == "__main__":
         except EOFError:
             pass
     
+    trajs = trajs
     begin_time = time.time()
     smiles = []
     tl = {key: 0 for key in range(2,9)}
@@ -349,7 +350,16 @@ if __name__ == "__main__":
     tuples.sort()
     sorted = list(reversed(tuples))
     #print(sorted) """
+
+    smiles = []
+    with gzip.open(f"{rewards_path}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
     
+    print(len(np.unique(smiles[:4000])))
     
     
 

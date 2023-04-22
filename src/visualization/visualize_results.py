@@ -14,11 +14,30 @@ import pandas as pd
 
 if __name__ == "__main__":
     # experiment_id
-    experiment_id = "experiment_1"
+    experiment_id = "experiment_3"
 
     with gzip.open("data/processed/rewards_proxy_dataset.pkl.gz") as fr:
         rewards_proxy = pickle.load(fr)
     
+    make_rewards_plot(experiment_id)
+
+    make_reward_threshold_plot([7,7.5,7.9,8], experiment_id)
+
+    # make rewards 
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    print(np.max(rewards))
+    print(len(rewards))
+    print(np.mean(rewards))
+    
+    """ hp = None
+=======
     print(rewards_proxy)
 
 
@@ -38,7 +57,7 @@ if __name__ == "__main__":
     for i, T in enumerate(thresholds):
         ax[i].plot(rids, rewards_T(T))
         ax[i].set_title(f"T={T}")
-    plt.show() """
+    plt.show()
     
     """ k = 1000
     
@@ -97,7 +116,6 @@ if __name__ == "__main__":
     mol.draw_mol_to_file("worst_mol",highlightBonds=True)
     print(f"From proxy using trajectory: {proxy([mol]).item()}") """
 
-    """
     
     trajs = []
     with gzip.open("results/experiment_1/trajectories.pkl.gz") as fr:
@@ -135,4 +153,3 @@ if __name__ == "__main__":
         #print(torch.exp(torch.max(stem_out)).sum().item())
         #time.sleep(5)
 
-        """
