@@ -44,7 +44,6 @@ unique_rewards = list(smiles_reward.values())
 
 print(len(unique_rewards))
 
-# save the rewards from the dictionary to a file called unique_rewards
-with gzip.open(f"{os.getcwd()}/data/processed/unique_rewards.pkl.gz", "wb") as fw:
+# save the rewards to path variable /unique_rewards.pkl.gz
+with gzip.open(f"{path}unique_rewards.pkl.gz", "wb") as fw:
     pickle.dump(unique_rewards, fw)
-

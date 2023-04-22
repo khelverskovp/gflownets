@@ -11,6 +11,9 @@ from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol, MurckoScaffol
 import time
 import pandas as pd
 
+# import defaultdict
+from collections import defaultdict
+
 # figure 18 (done)
 def make_leaf_flow_loss_plot(experiment_id):
     # path to loss file
@@ -147,48 +150,59 @@ def make_reward_threshold_plot(thresholds, experiment_id):
 
 # figure 4 (not unique molecules)
 def make_top_k_plot(k_values, experiment_id):
-    # only allow for 4 thresholds
+    # only allow for 3 thresholds
     assert len(k_values) == 3, "Please give 3 thresholds for plot to work!"
     plt.figure()
-    # path to rewards file
-    rewards_path = f'results/{experiment_id}'
+    # path to rewards file is experiment_id/unique_rewards.pkl.gz
+    path = f'results/{experiment_id}'
 
     # store rewards in list
     rewards = []
 
-    with gzip.open(f"{rewards_path}/rewards.pkl.gz") as fr:
+    with gzip.open(f"{path}/rewards.pkl.gz") as fr:
         try:
             while True:
                 rewards.extend(pickle.load(fr))
         except EOFError:
             pass
+    
+    # store smiles in a list 
+    smiles = []
+    with gzip.open(f"{path}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    is_sampled = defaultdict(lambda:False)
 
     # change to numpy array
     rewards = np.array(rewards)
     linestyles = [':','--','-']
     legends = ["top 10", "top 100", "top 1000"]
-    
-    plt.ylim(2,8.5)
-    plt.yticks([2,4,6,8])
 
     for k, ls, lg in zip(k_values, linestyles, legends):
-        # sort the first k values
         top_k = np.sort(rewards[:k])
 
         top_k_avg = [np.mean(top_k)]
 
         for i in range(k+1,len(rewards)):
-            if rewards[i] > top_k[0]:
+            if rewards[i] > top_k[0] and not is_sampled[smiles[i]]:
                 top_k[0] = rewards[i]
+                is_sampled[smiles[i]] = True
             top_k_avg.append(np.mean(top_k))
             top_k = np.sort(top_k)
 
         top_k_rids = np.arange(k,len(rewards))
         plt.semilogx(top_k_rids, top_k_avg, ls, label=lg)
-    
+        
+    plt.ylim(2,8.5)
+    plt.yticks([2,4,6,8])
+
     plt.xlabel("molecules visited")
-    plt.ylabel("avg reward of top k")
-    plt.title("Average reward of top k molecules",fontsize=14)
+    plt.ylabel("avg " + r"$R$" + " of top " + r"$k$")
+
     plt.legend()
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
