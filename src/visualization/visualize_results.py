@@ -21,6 +21,7 @@ if __name__ == "__main__":
     
     print(rewards_proxy)
 
+
     """ rewards = []
     with gzip.open("results/experiment_1/rewards.pkl.gz") as fr:
         try:
