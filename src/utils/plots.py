@@ -199,16 +199,17 @@ def make_top_k_plot(k_values, experiment_id):
         
     plt.ylim(2,8.5)
     plt.yticks([2,4,6,8])
-
+    plt.minorticks_off()
+    plt.grid()
     plt.xlabel("molecules visited")
     plt.ylabel("avg " + r"$R$" + " of top " + r"$k$")
 
     plt.legend()
-    figures_path = f"reports/figures/{experiment_id}"
-    os.makedirs(figures_path,exist_ok=True)
-
-    # save file
     file_id = len(rewards)
+    figures_path = f"reports/figures/{experiment_id}/{int(file_id / 4)}"
+    os.makedirs(figures_path,exist_ok=True)
+    
+    # save file
     filename = f"{figures_path}/top_k_reward_plot_{file_id}.png"
     plt.savefig(filename)
 
