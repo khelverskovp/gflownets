@@ -226,6 +226,7 @@ def make_empirical_density_plot(experiment_id, betas):
     linestyles = [':','--','-']
 
     # for each beta in betas add a legend \beta$ = value of beta 
+
    # legends = [f"\beta$={beta}" for beta in betas]
     legends = [r'$\beta$ = 10', r'$\beta$ = 1', r'$\beta$ = 4', 'proxy dataset']
 
