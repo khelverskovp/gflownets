@@ -16,7 +16,13 @@ if __name__ == "__main__":
     # experiment_id
     experiment_id = "experiment_1"
 
-    k_values = [10,100,1000]
-    make_top_k_plot(k_values, experiment_id)
+    #k_values = [10,100,1000]
+    #make_top_k_plot(k_values, experiment_id)
+
+    #make_empirical_density_plot()
+
+    #make_diverse_bemis_murcko_plot(7.5, "experiment_1")
+
+    make_leaf_flow_loss_plot(experiment_id)
 
     
