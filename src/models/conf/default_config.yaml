@@ -1,6 +1,6 @@
 defaults:
     - _self_
-    - experiment: experiment1
+    - experiment: experiment4
     - wandb: wandb_molecule
 
 # disable hydra changing working directory

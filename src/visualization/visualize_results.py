@@ -14,9 +14,23 @@ import pandas as pd
 
 if __name__ == "__main__":
     # experiment_id
-    experiment_id = "experiment_1"
+    experiment_id = "experiment_4"
 
-    k_values = [10,100,1000]
-    make_top_k_plot(k_values, experiment_id)
-
+    #k_values = [10,100,1000]
+    #make_top_k_plot(k_values, experiment_id)
+    #make_leaf_flow_loss_plot(experiment_id)
+    #make_reward_threshold_plot([7,7.5,7.9,8],experiment_id)
     
+    #make_scaffold_plot(experiment_id)
+
+    #make_tanimoto_plot(experiment_id)
+    rewards = []
+    path = f'results/{experiment_id}'
+    with gzip.open(f"{path}/inflows.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    print(rewards)

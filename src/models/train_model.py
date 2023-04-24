@@ -140,9 +140,10 @@ def main(cfg):
     flow_losses_min = []
     flow_losses_max = []
 
-    # list to store rewards, trajectories and smiles strings
+    # list to store rewards, trajectories, inflows (terminal states) and smiles strings
     rewards = []
     trajectories = []
+    inflows = []
     smiles = []
     
     # define training loop
@@ -331,6 +332,9 @@ def main(cfg):
                     # update min and max values
                     min_term_loss = min(min_term_loss, tl.cpu().item())
                     max_term_loss = max(max_term_loss, tl.cpu().item())
+                    
+                    # log inflow for terminal states
+                    inflows.append(in_flow.cpu().item())
                     break
                 else:
                     fl = loss
@@ -382,6 +386,9 @@ def main(cfg):
 
     pickle.dump(trajectories,
                 gzip.open(f"{results_path}/trajectories.pkl.gz", 'ab'))
+    
+    pickle.dump(inflows,
+                gzip.open(f"{results_path}/inflows.pkl.gz", 'ab'))
     
     pickle.dump(smiles,
                 gzip.open(f"{results_path}/smiles.pkl.gz", 'ab'))

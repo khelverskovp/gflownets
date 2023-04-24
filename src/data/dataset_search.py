@@ -36,6 +36,9 @@ def main(input_filepath):
     # load smile names and attachment points
     block_rs = blocks["block_r"].to_list()
 
+    print(np.mean(-df.dockscore*((-df.dockscore) > 0)))
+    print(np.std(-df.dockscore*((-df.dockscore) > 0)))
+
     """ for i in range(len(df.smiles)):
         done = False
         for j in range(i+1,len(df.smiles)):
@@ -50,7 +53,7 @@ def main(input_filepath):
     print(np.mean(df.dockscore[df.dockscore < 0]), np.std(df.dockscore[df.dockscore < 0]))
     print(df.iloc[59])
     print(df.iloc[605]) """
-    target_norm = [-8.6,1.1]
+    """ target_norm = [-8.6,1.1]
     temp = np.copy(df.dockscore)
     temp[temp > 0] = 0
     vals = 4-(temp-target_norm[0])/target_norm[1]
@@ -80,7 +83,7 @@ def main(input_filepath):
     plt.xlabel('Value')
     plt.ylabel('Probability Density')
     plt.title('Empirical PDF')
-    plt.show()
+    plt.show() """
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

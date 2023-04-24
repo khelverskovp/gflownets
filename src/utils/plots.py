@@ -40,13 +40,35 @@ def make_leaf_flow_loss_plot(experiment_id):
         except EOFError:
             pass
 
-    steps = np.arange(len(leaf_losses)) + 1
+    steps = []
+    lls = []
+    llsmin = []
+    llsmax = []
+    fls = []
+    flsmin = []
+    flsmax = []
+    nbins = 30
+    for i in range(6):
+        # create bin
+        left = 10**i
+        right = min(10**(i+1),len(leaf_losses))
+        bins = np.linspace(left, right, nbins+1)
+        for j in range(nbins):
+            steps.append((bins[j]+bins[j+1]) / 2)
+            lls.append(np.mean(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            llsmin.append(np.min(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            llsmax.append(np.max(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            fls.append(np.mean(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
+            flsmin.append(np.min(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
+            flsmax.append(np.max(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
 
+    
+    
     plt.figure()
-    plt.loglog(steps, leaf_losses, color="blue")
-    plt.loglog(steps, flow_losses, color="orange")
-    plt.fill_between(steps, leaf_losses_min, leaf_losses_max, color="blue", alpha=0.1)
-    plt.fill_between(steps, flow_losses_min, flow_losses_max, color="orange", alpha=0.1)
+    plt.loglog(steps, lls, color="blue")
+    plt.loglog(steps, fls, color="orange")
+    plt.fill_between(steps, llsmin, llsmax, color="blue", alpha=0.2)
+    plt.fill_between(steps, flsmin, flsmax, color="orange", alpha=0.2)
 
     plt.ylim(0.00001,6000)
     plt.yticks([0.001,0.01,0.1,1,10,100,1000])
@@ -57,11 +79,11 @@ def make_leaf_flow_loss_plot(experiment_id):
     plt.ylabel("loss")
     plt.title("Flow and leaf losses")
 
-    figures_path = f"reports/figures/{experiment_id}/{int(len(steps))}"
+    file_id = len(leaf_losses)
+    figures_path = f"reports/figures/{experiment_id}/{file_id}"
     os.makedirs(figures_path,exist_ok=True)
 
     # save file
-    file_id = len(steps)
     filename = f"{figures_path}/leafflowloss_{file_id}.png"
     plt.savefig(filename)
 
@@ -252,7 +274,7 @@ def make_empirical_density_plot(experiment_id, betas):
     pdf_proxy = pdf_proxy / np.sum(pdf_proxy)
 
     # plot pdf_proxy and pdf for each beta. The x axis is 0-8 (R(x)) and the y axis is the probability density
-    plt.figure()
+    
     plt.xlim(0,8)
     #make xlim 0, 2, 4, 6, 8
     plt.xticks([0,2,4,6,8])
@@ -314,7 +336,66 @@ def make_empirical_density_proxy():
     filename = f"{figures_path}/empirical_density_plot_proxy_{file_id}.png"
     plt.savefig(filename)
 
+def make_scaffold_plot(experiment_id):
+    #get rewards for experiment
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    smiles = []
+    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    smiles = smiles[:10000]
+    rewards = rewards[:10000]
+        
+    from collections import defaultdict
+    start_time = time.time()
+    unique_scaffold = defaultdict(lambda: True)
+    T = 7.5
+    is_bemis_murcko = np.zeros(len(rewards))
+    for i, smi in enumerate(smiles):
+        bemis_murcko = MurckoScaffoldSmiles(smi)
+        if rewards[i] > T and unique_scaffold[bemis_murcko]:
+            is_bemis_murcko[i] = 1
+            unique_scaffold[bemis_murcko] = False
+    plt.plot(np.arange(len(smiles)),np.cumsum(is_bemis_murcko))
+    plt.show()
 
+def make_tanimoto_plot(experiment_id):
+    #get rewards for experiment
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    smiles = []
+    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    smiles = smiles[:10000]
+    rewards = rewards[:10000]
+    
+    T = 7.5 
+
+
+    print(count)
+        
     
 
 

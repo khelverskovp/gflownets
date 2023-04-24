@@ -549,7 +549,7 @@ class BlockMolecule:
             edge_index=f(edges).T if len(edges) > 0 else f([[],[]]),
             edge_attr=f(edge_attrs) if len(edges) > 0 else f([]).reshape((0,2)),
             stems=f(self.stems) if len(self.stems) > 0 else f([(0,0)]),
-            stemtypes=f(stemtypes) if len(self.stems) > 0 else f([self.bdict.n_stem_types]))
+            stemtypes=f(stemtypes) if len(self.stems) > 0 else f([0]))
         
         g.to(device) # moves the data to the device (cpu or gpu)
         return g
@@ -625,6 +625,48 @@ class MoleculeMDP:
 if __name__ == "__main__":
     molecule = BlockMolecule()
 
+    molecule.add_block(0)
+    molecule.add_block(0)
+    molecule.add_block(19)
+    print(molecule.stems)
+    print(molecule.to_block_graph(device=torch.device("cpu")).edge_attr)
+
+    """ molecule = BlockMolecule()
+
+    molecule.add_block(95)
+    molecule.add_block(0)
+
+    print(molecule.to_block_graph(device=torch.device("cpu")).edge_attr)
+
+    bdict = BlockDictionary()
+    from collections import defaultdict
+    d = defaultdict(lambda: 0)
+    for i, smi in enumerate(bdict.block_smis):
+        d[smi] = max(max(bdict.block_rs[i]),0)
+    
+    print(bdict.stem_type_offset)
+    for i, smi in enumerate(bdict.unique_block_set):
+        if d[smi] != max(bdict.block_rs[bdict.block_smis.index(smi)]):
+            print(smi)
+            print(bdict.stem_type_offset[i])
+            print(bdict.unique_block_set[i+1]) """
+
+
+    """ stem_type_offset = np.int32([0] + list(np.cumsum([d[smi]+1 for smi in bdict.unique_block_set])))
+    # the last index represents no stem. Used for empty molecules and molecules with no available stems
+    n_stem_types = stem_type_offset[-1]
+
+    print(stem_type_offset)
+    print(n_stem_types) """
+
+    #molecule.add_block(63)
+    #molecule.add_block(63)
+    #print(molecule.stems)
+
+    #molecule.draw_mol_to_file("nostop",figsize=(500,250))
+
+
+
     # build molecule
     # choose molecules to add
     """ block_list = [91, 29, 48, 95]
@@ -661,22 +703,6 @@ if __name__ == "__main__":
                 print(block)
                 molecule.draw_mol_to_file("test50") """
     
-    molecule = BlockMolecule()
-    molecule.add_block(0)
-    molecule.add_block(5)
-    molecule.add_block(6)
-    graph = molecule.to_block_graph()
-
-    print(graph.x)
-    print(graph.edge_index)
-    print(graph.edge_attr)
-    print(graph.stems)
-    print(graph.stemtypes)
-
-    print(sorted(set(molecule.bdict.block_smis)))
-    # debug
-    #import pdb
-    #pdb.set_trace()
     
 
     
