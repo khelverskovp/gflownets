@@ -10,6 +10,8 @@ from rdkit import Chem
 from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol, MurckoScaffoldSmiles
 import time
 import pandas as pd
+from scipy import stats
+
 
 # import defaultdict
 from collections import defaultdict
@@ -224,7 +226,7 @@ def make_top_k_plot(k_values, experiment_id):
     plt.minorticks_off()
     plt.grid()
     plt.xlabel("molecules visited")
-    plt.ylabel("avg " + r"$R$" + " of top " + r"$k$")
+    plt.ylabel("avg " + r"$R$" + " of unique top " + r"$k$")
 
     plt.legend()
     file_id = len(rewards)
@@ -234,21 +236,78 @@ def make_top_k_plot(k_values, experiment_id):
     # save file
     filename = f"{figures_path}/top_k_reward_plot_{file_id}.png"
     plt.savefig(filename)
-
-# figure 3 (empirical density of rewards)
-# for beta = 1, beta = 4 and beta = 10 and proxy dataset
-def make_empirical_density_plot(experiment_id, betas):
-    # load data points
-    filename = "docked_mols.csv"
-    path = f"data/processed/{filename}"
-
-    df = pd.read_csv(path)
-
-    # get rewards for dataset
-    df_rewards = df["dockscore"].values
-
     
-    #get rewards for experiment
+
+def make_empirical_density_plot():
+    # get rewards for experiment for each beta
+    rewards_beta1 = []
+    rewards_beta4 = []
+
+    with gzip.open(f"results/experiment_2/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards_beta1.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    with gzip.open(f"results/experiment_3/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards_beta4.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    # change to numpy array
+    rewards_beta1 = np.array(rewards_beta1)
+    rewards_beta4 = np.array(rewards_beta4)
+
+    # get rewards for proxy dataset data/processed/rewards_proxy_dataset.pkl.gz
+    df_rewards = pd.read_pickle("data/processed/rewards_proxy_dataset.pkl.gz")
+    # change to numpy array
+    df_rewards = np.array(df_rewards)
+
+    linestyles = [':', '-', '-']
+    colors = ['blue', 'blue', 'black']
+    legends = [r'$\hat{p}(R | \beta=1)$', r'$\hat{p}(R | \beta=4)$', r'$\hat{p}(R | \mathrm{proxy\ dataset})$']
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # plot empirical density for each beta
+    for i, rewards in enumerate([rewards_beta1, rewards_beta4, df_rewards]):
+        pdf, bins = np.histogram(rewards, density=False, bins=40)
+        pdf = pdf / np.sum(pdf)
+        ax.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
+        
+
+    ax.grid()
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0.00)
+
+    ax.set_xlabel(r'$R(x)$')
+    ax.set_xticks(np.arange(0, 9, 2))
+    ax.set_ylabel(r'$\hat{p}(R)$')
+    ax.legend()
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/empirical_density_plot.png"
+    plt.savefig(filename)
+
+
+from rdkit import Chem
+from rdkit.Chem.Scaffolds import MurckoScaffold
+import numpy as np
+import matplotlib.pyplot as plt
+
+from rdkit import Chem
+from rdkit.Chem.Scaffolds import MurckoScaffold
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+def make_diverse_bemis_murcko_plot(T, experiment_id):
+    # get rewards and smiles for experiment 
     rewards = []
     with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
         try:
@@ -256,52 +315,55 @@ def make_empirical_density_plot(experiment_id, betas):
                 rewards.extend(pickle.load(fr))
         except EOFError:
             pass
+    
+    smiles = []
+    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    # only choose smiles = first 10000 smiles 
 
-    # change to numpy array
-    rewards = np.array(rewards)
+    unique_scaffold = defaultdict(lambda: True)
+    is_bemis_murcko = np.zeros(len(rewards))
+    for i, smi in enumerate(smiles):
+        start_time = time.time() # get start time
+        bemis_murcko = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(smi)))
+        if rewards[i] > T and unique_scaffold[bemis_murcko]:
+            unique_scaffold[bemis_murcko] = False
+            is_bemis_murcko[i] = 1
+        end_time = time.time() # get end time
+        elapsed_time = end_time - start_time # calculate elapsed time
+        print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
 
-    linestyles = [':','--','-']
+    
+    # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
+    plt.plot(np.arange(len(smiles)),np.cumsum(is_bemis_murcko))
+    plt.xlabel("states visited")
+    # set ylabel with the actual T value
+    plt.ylabel(f"# of modes with R > {T}")
+    plt.grid()
 
     # for each beta in betas add a legend \beta$ = value of beta 
 
-   # legends = [f"\beta$={beta}" for beta in betas]
+    # legends = [f"\beta$={beta}" for beta in betas]
     legends = [r'$\beta$ = 10', r'$\beta$ = 1', r'$\beta$ = 4', 'proxy dataset']
 
     # and add "proxy dataset to the legend"
     legends.append("proxy dataset")
 
-    pdf_proxy, bins_proxy = np.histogram(df_rewards, density=True)
-    pdf_proxy = pdf_proxy / np.sum(pdf_proxy)
+    plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
 
-    # plot pdf_proxy and pdf for each beta. The x axis is 0-8 (R(x)) and the y axis is the probability density
-    
-    plt.xlim(0,8)
-    #make xlim 0, 2, 4, 6, 8
-    plt.xticks([0,2,4,6,8])
-
-    # plot pdf_proxy
-    plt.plot(bins_proxy[:-1], pdf_proxy, label=legends[-1])
-
-    # plot pdf for each beta
-    for beta, ls, lg in zip(betas, linestyles, legends[:-1]):
-        # get pdf for beta
-        pdf_beta, bins_beta = np.histogram(rewards, density=True)
-        pdf_beta = pdf_beta / np.sum(pdf_beta)
-
-        # plot pdf for beta
-        plt.plot(bins_beta[:-1], pdf_beta, ls, label=lg)
     
 
-    plt.xlabel("reward")
-    plt.ylabel("empirical density")
-    plt.title("Empirical density of rewards",fontsize=14)
-    plt.legend()
     figures_path = f"reports/figures/{experiment_id}"
-    os.makedirs(figures_path,exist_ok=True)
+    os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    file_id = len(rewards)
-    filename = f"{figures_path}/empirical_density_plot_{file_id}.png"
+    filename = f"{figures_path}/diverse_bemis_murcko_plot.png"
     plt.savefig(filename)
 
 
@@ -397,6 +459,11 @@ def make_tanimoto_plot(experiment_id):
     print(count)
         
     
+    
+
+    
+
+
 
 
 if __name__ == "__main__":

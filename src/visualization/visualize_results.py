@@ -18,10 +18,12 @@ if __name__ == "__main__":
 
     #k_values = [10,100,1000]
     #make_top_k_plot(k_values, experiment_id)
-    #make_leaf_flow_loss_plot(experiment_id)
-    #make_reward_threshold_plot([7,7.5,7.9,8],experiment_id)
-    
-    #make_scaffold_plot(experiment_id)
+
+    #make_empirical_density_plot()
+
+    #make_diverse_bemis_murcko_plot(7.5, "experiment_1")
+
+    make_leaf_flow_loss_plot(experiment_id)
 
     #make_tanimoto_plot(experiment_id)
     rewards = []
