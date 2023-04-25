@@ -14,25 +14,50 @@ import pandas as pd
 
 if __name__ == "__main__":
     # experiment_id
-    experiment_id = "experiment_4"
+    experiment_id = "experiment_1"
 
-    #k_values = [10,100,1000]
-    #make_top_k_plot(k_values, experiment_id)
-
-    #make_empirical_density_plot()
-
-    #make_diverse_bemis_murcko_plot(7.5, "experiment_1")
-
-    make_leaf_flow_loss_plot(experiment_id)
-
-    #make_tanimoto_plot(experiment_id)
     rewards = []
-    path = f'results/{experiment_id}'
-    with gzip.open(f"{path}/inflows.pkl.gz") as fr:
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
         try:
             while True:
                 rewards.extend(pickle.load(fr))
         except EOFError:
             pass
+    
+    print(np.max(rewards[:52000]),np.mean(rewards[:52000]))
 
-    print(rewards)
+    experiment_id = "experiment_4"
+
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    print(np.max(rewards),np.mean(rewards))
+
+    experiment_id = "experiment_5"
+
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    print(np.max(rewards),np.mean(rewards))
+
+    #k_values = [10,100,1000]
+    #make_top_k_plot(k_values, experiment_id)
+
+    make_empirical_density_plot()
+
+    #make_diverse_bemis_murcko_plot(7.5, "experiment_1")
+
+    #make_tanimoto_plot(experiment_id)
+
+    #experiment_id = "experiment_1"
+    #make_reward_threshold_plot([7,7.5,7.9,8],experiment_id)

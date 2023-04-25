@@ -6,173 +6,73 @@ import os
 from src.utils.mols import BlockMolecule
 from src.utils.proxy import Proxy
 import torch
-from rdkit import Chem
+from rdkit import Chem, DataStructs
 from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol, MurckoScaffoldSmiles
 import time
 import pandas as pd
 from scipy import stats
 
-
-# import defaultdict
 from collections import defaultdict
 
-# figure 18 (done)
-def make_leaf_flow_loss_plot(experiment_id):
-    # path to loss file
-    losses_path = f'results/{experiment_id}'
+# Figure 3 
+def make_empirical_density_plot():
+    # get rewards for experiment for each beta
+    rewards_beta1 = []
+    rewards_beta4 = []
 
-    #To load from pickle file
-    leaf_losses = []
-    leaf_losses_min = []
-    leaf_losses_max = []
-    flow_losses = []
-    flow_losses_min = []
-    flow_losses_max = []
-
-    with gzip.open(f"{losses_path}/losses.pkl.gz") as fr:
+    with gzip.open(f"results/experiment_2/rewards.pkl.gz") as fr:
         try:
             while True:
-                data = pickle.load(fr)
-                leaf_losses.extend(data["term_losses"])
-                leaf_losses_min.extend(data["term_losses_min"])
-                leaf_losses_max.extend(data["term_losses_max"])
-                flow_losses.extend(data["flow_losses"])
-                flow_losses_min.extend(data["flow_losses_min"])
-                flow_losses_max.extend(data["flow_losses_max"])
+                rewards_beta1.extend(pickle.load(fr))
         except EOFError:
             pass
-
-    steps = []
-    lls = []
-    llsmin = []
-    llsmax = []
-    fls = []
-    flsmin = []
-    flsmax = []
-    nbins = 30
-    for i in range(6):
-        # create bin
-        left = 10**i
-        right = min(10**(i+1),len(leaf_losses))
-        bins = np.linspace(left, right, nbins+1)
-        for j in range(nbins):
-            steps.append((bins[j]+bins[j+1]) / 2)
-            lls.append(np.mean(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
-            llsmin.append(np.min(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
-            llsmax.append(np.max(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
-            fls.append(np.mean(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
-            flsmin.append(np.min(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
-            flsmax.append(np.max(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
-
-    
-    
-    plt.figure()
-    plt.loglog(steps, lls, color="blue")
-    plt.loglog(steps, fls, color="orange")
-    plt.fill_between(steps, llsmin, llsmax, color="blue", alpha=0.2)
-    plt.fill_between(steps, flsmin, flsmax, color="orange", alpha=0.2)
-
-    plt.ylim(0.00001,6000)
-    plt.yticks([0.001,0.01,0.1,1,10,100,1000])
-
-    plt.legend(["leaf loss", "flow loss"])
-
-    plt.xlabel("SGD steps")
-    plt.ylabel("loss")
-    plt.title("Flow and leaf losses")
-
-    file_id = len(leaf_losses)
-    figures_path = f"reports/figures/{experiment_id}/{file_id}"
-    os.makedirs(figures_path,exist_ok=True)
-
-    # save file
-    filename = f"{figures_path}/leafflowloss_{file_id}.png"
-    plt.savefig(filename)
-
-# Rewards plot med moving average (done)
-def make_rewards_plot(experiment_id):
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+    with gzip.open(f"results/experiment_3/rewards.pkl.gz") as fr:
         try:
             while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-
-    # make a plot of reward on y axis vs molecules generated (length of rewards list) on x axis
-    rids = np.arange(len(rewards)) + 1
-    rewards = np.array(rewards)
-
-    # plot moving average on top of rewards
-    rewards_ma = np.convolve(rewards, np.ones((100,))/100, mode='valid')
-    rids_ma = np.arange(len(rewards_ma))
-
-    plt.figure()
-    plt.semilogx(rids, rewards)
-    plt.semilogx(rids_ma, rewards_ma)
-    plt.xlabel("Molecules generated")
-    plt.ylabel("Reward")
-    plt.title("Reward")
-
-    #add legends
-    plt.legend(["Reward", "Moving average"])
-
-    
-
-    file_id = len(rids)
-    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
-    os.makedirs(figures_path,exist_ok=True)
-
-
-    filename = f"{figures_path}/rewards_{file_id}.png"
-    plt.savefig(filename)
-
-    
-# figure 5 (without bemis murcko with 4 thresholds)
-def make_reward_threshold_plot(thresholds, experiment_id):
-    # only allow for 4 thresholds
-    assert len(thresholds) == 4, "Please give 4 thresholds for plot to work!"
-    # path to rewards file
-    rewards_path = f'results/{experiment_id}'
-
-    # store rewards in list
-    rewards = []
-
-    with gzip.open(f"{rewards_path}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
+                rewards_beta4.extend(pickle.load(fr))
         except EOFError:
             pass
 
     # change to numpy array
-    rewards = np.array(rewards)
-    rids = np.arange(len(rewards)) + 1
+    rewards_beta1 = np.array(rewards_beta1)
+    rewards_beta4 = np.array(rewards_beta4)
 
-    # compute number of molecules with rewards > T
-    rewards_T = lambda T : np.cumsum(rewards > T)
-    
-    # create figure
-    fig, axs = plt.subplots(2,2)
-    
-    for ax, T in zip(axs.ravel(), thresholds):
-        ax.plot(rids, rewards_T(T))
-        ax.set_xlabel("states visited")
-        ax.set_ylabel(f"# of modes with R>{T}")
-        ax.grid(True)
-    
-    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
-    os.makedirs(figures_path,exist_ok=True)
+    # get rewards for proxy dataset data/processed/rewards_proxy_dataset.pkl.gz
+    df_rewards = pd.read_pickle("data/processed/rewards_proxy_dataset.pkl.gz")
+    # change to numpy array
+    df_rewards = np.array(df_rewards)
 
-    fig.suptitle(f"Number of high-reward molecules with different thresholds")
-    fig.tight_layout()
+    linestyles = [':', '-', '-']
+    colors = ['blue', 'blue', 'black']
+    legends = [r'$\hat{p}(R | \beta=1)$', r'$\hat{p}(R | \beta=4)$', r'$\hat{p}(R | \mathrm{proxy\ dataset})$']
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # plot empirical density for each beta
+    for i, rewards in enumerate([rewards_beta1, rewards_beta4, df_rewards]):
+        pdf, bins = np.histogram(rewards, density=False, bins=40)
+        pdf = pdf / np.sum(pdf)
+        ax.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
+        
+
+    ax.grid()
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0.00)
+
+    ax.set_xlabel(r'$R(x)$')
+    ax.set_xticks(np.arange(0, 9, 2))
+    ax.set_ylabel(r'$\hat{p}(R)$')
+    ax.legend()
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    file_id = len(rewards)
-    filename = f"{figures_path}/reward_threshold_plot_{file_id}.png"
+    filename = f"{figures_path}/empirical_density_plot.png"
     plt.savefig(filename)
 
-# figure 4 (not unique molecules)
+
+# Figure 4
 def make_top_k_plot(k_values, experiment_id):
     # only allow for 3 thresholds
     assert len(k_values) == 3, "Please give 3 thresholds for plot to work!"
@@ -236,63 +136,77 @@ def make_top_k_plot(k_values, experiment_id):
     # save file
     filename = f"{figures_path}/top_k_reward_plot_{file_id}.png"
     plt.savefig(filename)
+
+
+
+# Figure 14
+
+avg = []
+
+def is_diverse_tanimoto(smi, diverse_modes, S):
+    fps = Chem.RDKFingerprint(Chem.MolFromSmiles(smi))
+    for smi_ref in diverse_modes:
+        start_time = time.time()
+        fps_ref = Chem.RDKFingerprint(Chem.MolFromSmiles(smi_ref))
+        tanimoto_sim = DataStructs.FingerprintSimilarity(fps,fps_ref)
+        avg.append(time.time()-start_time)
+        if tanimoto_sim >= S:
+            return False
+    return True
+
+def make_tanimoto_plot(experiment_id):
+    #get rewards for experiment
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    smiles = []
+    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    
+    rewards = np.array(rewards)
+    smiles = np.array(smiles)
+    
+    start_time = time.time()
+    T = 7 
+    S = 0.7
+
+    smiles = np.unique(smiles[rewards > T])
+    
+    diverse_modes = set()
+    diverse_tanimoto = np.zeros(len(rewards))
+    print(len(smiles))
+    for i, smi in enumerate(smiles):
+        if i % 100 == 0:
+            end_time = time.time()
+            print(i, len(diverse_modes), "The last 100 iterations took:", end_time - start_time, "seconds")
+            start_time = end_time
+            print(np.mean(avg))
+        #if is_explored[smi]:
+        #    continue
+        if is_diverse_tanimoto(smi, diverse_modes, S):
+            diverse_modes.add(smi)
+            diverse_tanimoto[i] = 1
+        #is_explored[smi] = True
+    plt.xlim(0,1e6)
+    plt.plot(np.arange(len(diverse_tanimoto))+1, np.cumsum(diverse_tanimoto))
+    plt.show()
+
+
     
 
-def make_empirical_density_plot():
-    # get rewards for experiment for each beta
-    rewards_beta1 = []
-    rewards_beta4 = []
 
-    with gzip.open(f"results/experiment_2/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards_beta1.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    with gzip.open(f"results/experiment_3/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards_beta4.extend(pickle.load(fr))
-        except EOFError:
-            pass
 
-    # change to numpy array
-    rewards_beta1 = np.array(rewards_beta1)
-    rewards_beta4 = np.array(rewards_beta4)
-
-    # get rewards for proxy dataset data/processed/rewards_proxy_dataset.pkl.gz
-    df_rewards = pd.read_pickle("data/processed/rewards_proxy_dataset.pkl.gz")
-    # change to numpy array
-    df_rewards = np.array(df_rewards)
-
-    linestyles = [':', '-', '-']
-    colors = ['blue', 'blue', 'black']
-    legends = [r'$\hat{p}(R | \beta=1)$', r'$\hat{p}(R | \beta=4)$', r'$\hat{p}(R | \mathrm{proxy\ dataset})$']
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    # plot empirical density for each beta
-    for i, rewards in enumerate([rewards_beta1, rewards_beta4, df_rewards]):
-        pdf, bins = np.histogram(rewards, density=False, bins=40)
-        pdf = pdf / np.sum(pdf)
-        ax.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
-        
-
-    ax.grid()
-    ax.set_xlim(left=0)
-    ax.set_ylim(bottom=0.00)
-
-    ax.set_xlabel(r'$R(x)$')
-    ax.set_xticks(np.arange(0, 9, 2))
-    ax.set_ylabel(r'$\hat{p}(R)$')
-    ax.legend()
-
-    figures_path = f"reports/figures"
-    os.makedirs(figures_path, exist_ok=True)
-
-    # save file
-    filename = f"{figures_path}/empirical_density_plot.png"
-    plt.savefig(filename)
+    
 
 
 from rdkit import Chem
@@ -367,36 +281,82 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
     plt.savefig(filename)
 
 
+# figure 18 (done)
+def make_leaf_flow_loss_plot(experiment_id):
+    # path to loss file
+    losses_path = f'results/{experiment_id}'
 
+    #To load from pickle file
+    leaf_losses = []
+    leaf_losses_min = []
+    leaf_losses_max = []
+    flow_losses = []
+    flow_losses_min = []
+    flow_losses_max = []
 
-def make_empirical_density_proxy():
-    # load data points
-    filename = "docked_mols.csv"
-    path = f"data/processed/{filename}"
+    with gzip.open(f"{losses_path}/losses.pkl.gz") as fr:
+        try:
+            while True:
+                data = pickle.load(fr)
+                leaf_losses.extend(data["term_losses"])
+                leaf_losses_min.extend(data["term_losses_min"])
+                leaf_losses_max.extend(data["term_losses_max"])
+                flow_losses.extend(data["flow_losses"])
+                flow_losses_min.extend(data["flow_losses_min"])
+                flow_losses_max.extend(data["flow_losses_max"])
+        except EOFError:
+            pass
 
-    df = pd.read_csv(path)
+    steps = []
+    lls = []
+    llsmin = []
+    llsmax = []
+    fls = []
+    flsmin = []
+    flsmax = []
+    nbins = 30
+    for i in range(6):
+        # create bin
+        left = 10**i
+        right = min(10**(i+1),len(leaf_losses))
+        bins = np.linspace(left, right, nbins+1)
+        for j in range(nbins):
+            steps.append((bins[j]+bins[j+1]) / 2)
+            lls.append(np.mean(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            llsmin.append(np.min(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            llsmax.append(np.max(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            fls.append(np.mean(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
+            flsmin.append(np.min(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
+            flsmax.append(np.max(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
 
-    # get rewards for dataset
-    df_rewards = df["dockscore"].values
-
-    pdf_proxy, bins_proxy = np.histogram(df_rewards, density=True)
-    pdf_proxy = pdf_proxy / np.sum(pdf_proxy)
-
-    # plot pdf_proxy
+    
+    
     plt.figure()
-    plt.plot(bins_proxy[:-1], pdf_proxy, label="proxy dataset")
-    plt.xlabel("reward")
-    plt.ylabel("empirical density")
+    plt.loglog(steps, lls, color="blue")
+    plt.loglog(steps, fls, color="orange")
+    plt.fill_between(steps, llsmin, llsmax, color="blue", alpha=0.2)
+    plt.fill_between(steps, flsmin, flsmax, color="orange", alpha=0.2)
 
-    plt.title("Empirical density of rewards",fontsize=14)
-    plt.legend()
-    figures_path = f"reports/figures/proxy"
+    plt.ylim(0.00001,6000)
+    plt.yticks([0.001,0.01,0.1,1,10,100,1000])
+
+    plt.legend(["leaf loss", "flow loss"])
+
+    plt.xlabel("SGD steps")
+    plt.ylabel("loss")
+    plt.title("Flow and leaf losses")
+
+    file_id = len(leaf_losses)
+    figures_path = f"reports/figures/{experiment_id}/{file_id}"
     os.makedirs(figures_path,exist_ok=True)
 
     # save file
-    file_id = len(df_rewards)
-    filename = f"{figures_path}/empirical_density_plot_proxy_{file_id}.png"
+    filename = f"{figures_path}/leafflowloss_{file_id}.png"
     plt.savefig(filename)
+
+
+
+
 
 def make_scaffold_plot(experiment_id):
     #get rewards for experiment
@@ -432,8 +392,12 @@ def make_scaffold_plot(experiment_id):
     plt.plot(np.arange(len(smiles)),np.cumsum(is_bemis_murcko))
     plt.show()
 
-def make_tanimoto_plot(experiment_id):
-    #get rewards for experiment
+
+
+
+# Extra plot
+# Rewards plot med moving average (done)
+def make_rewards_plot(experiment_id):
     rewards = []
     with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
         try:
@@ -441,23 +405,78 @@ def make_tanimoto_plot(experiment_id):
                 rewards.extend(pickle.load(fr))
         except EOFError:
             pass
+
+    # make a plot of reward on y axis vs molecules generated (length of rewards list) on x axis
+    rids = np.arange(len(rewards)) + 1
+    rewards = np.array(rewards)
+
+    # plot moving average on top of rewards
+    rewards_ma = np.convolve(rewards, np.ones((100,))/100, mode='valid')
+    rids_ma = np.arange(len(rewards_ma))
+
+    plt.figure()
+    plt.semilogx(rids, rewards)
+    plt.semilogx(rids_ma, rewards_ma)
+    plt.xlabel("Molecules generated")
+    plt.ylabel("Reward")
+    plt.title("Reward")
+
+    #add legends
+    plt.legend(["Reward", "Moving average"])
+
     
-    smiles = []
-    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+
+    file_id = len(rids)
+    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
+    os.makedirs(figures_path,exist_ok=True)
+
+
+    filename = f"{figures_path}/rewards_{file_id}.png"
+    plt.savefig(filename)
+
+# Extra plot (without bemis murcko with 4 thresholds)
+def make_reward_threshold_plot(thresholds, experiment_id):
+    # only allow for 4 thresholds
+    assert len(thresholds) == 4, "Please give 4 thresholds for plot to work!"
+    # path to rewards file
+    rewards_path = f'results/{experiment_id}'
+
+    # store rewards in list
+    rewards = []
+
+    with gzip.open(f"{rewards_path}/rewards.pkl.gz") as fr:
         try:
             while True:
-                smiles.extend(pickle.load(fr))
+                rewards.extend(pickle.load(fr))
         except EOFError:
             pass
-    
-    smiles = smiles[:10000]
-    rewards = rewards[:10000]
-    
-    T = 7.5 
 
+    # change to numpy array
+    rewards = np.array(rewards)
+    rids = np.arange(len(rewards)) + 1
 
-    print(count)
-        
+    # compute number of molecules with rewards > T
+    rewards_T = lambda T : np.cumsum(rewards > T)
+    
+    # create figure
+    fig, axs = plt.subplots(2,2)
+    
+    for ax, T in zip(axs.ravel(), thresholds):
+        ax.plot(rids, rewards_T(T))
+        ax.set_xlabel("states visited")
+        ax.set_ylabel(f"# of modes with R>{T}")
+        ax.grid(True)
+    
+    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
+    os.makedirs(figures_path,exist_ok=True)
+
+    fig.suptitle(f"Number of high-reward molecules with different thresholds")
+    fig.tight_layout()
+
+    # save file
+    file_id = len(rewards)
+    filename = f"{figures_path}/reward_threshold_plot_{file_id}.png"
+    plt.savefig(filename)
     
     
 
