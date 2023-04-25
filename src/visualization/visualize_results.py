@@ -14,7 +14,7 @@ import pandas as pd
 
 if __name__ == "__main__":
     # experiment_id
-    experiment_id = "experiment_1"
+    """ experiment_id = "experiment_1"
 
     rewards = []
     with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
@@ -37,9 +37,9 @@ if __name__ == "__main__":
             pass
     
     print(np.max(rewards),np.mean(rewards))
-
-    experiment_id = "experiment_5"
-
+    """
+    experiment_id = "experiment_2"
+    
     rewards = []
     with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
         try:
@@ -49,15 +49,20 @@ if __name__ == "__main__":
             pass
     
     print(np.max(rewards),np.mean(rewards))
+    print(len(rewards))
 
-    #k_values = [10,100,1000]
-    #make_top_k_plot(k_values, experiment_id)
+    experiment_id = "experiment_2"
+    k_values = [10,100,1000]
+    make_top_k_plot(k_values, experiment_id)
 
     make_empirical_density_plot()
+    make_leaf_flow_loss_plot(experiment_id)
 
     #make_diverse_bemis_murcko_plot(7.5, "experiment_1")
 
     #make_tanimoto_plot(experiment_id)
 
-    #experiment_id = "experiment_1"
-    #make_reward_threshold_plot([7,7.5,7.9,8],experiment_id)
+    #experiment_id = ["experiment_4","experiment_5"]
+    #[make_empirical_density_inflow_reward_plot(eid) for eid in experiment_id]
+    #make_empirical_density_inflow_reward_plot("experiment_1")
+    #make_scatter_inflow_reward_plot("experiment_2")

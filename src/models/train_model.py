@@ -143,7 +143,8 @@ def main(cfg):
     # list to store rewards, trajectories, inflows (terminal states) and smiles strings
     rewards = []
     trajectories = []
-    inflows = []
+    inflow_leaves = []
+    outflow_source = []
     smiles = []
     
     # define training loop
@@ -187,6 +188,10 @@ def main(cfg):
             # get output from model
             out_flow_stem, out_flow_stop, _ = model(mols_graph_batch)
             
+            # log outflow from initial empty molecule (dont include stop action for initial state)
+            out_flow_initial = torch.exp(out_flow_stem).sum()
+            outflow_source.append(out_flow_initial.cpu().item())
+
             # loop over trajectory
             for t in range(max_blocks):
                 # make probability of taking stop action very small for t < min_blocks
@@ -317,12 +322,12 @@ def main(cfg):
                         out_flow = torch.exp(out_flow_stem).sum() + torch.exp(out_flow_stop).sum()
 
                 # compute log of inflows and outflows with log
-                in_flow = torch.log(epsilon_loss + in_flow)
+                in_flow_log = torch.log(epsilon_loss + in_flow)
             
-                out_flow = torch.log(epsilon_loss + reward + out_flow)
+                out_flow_log = torch.log(epsilon_loss + reward + out_flow)
 
                 # compute squared difference
-                loss = (in_flow - out_flow).pow(2)
+                loss = (in_flow_log - out_flow_log).pow(2)
 
                 # multiply loss with lambda if terminal state
                 if terminal_state:
@@ -334,7 +339,7 @@ def main(cfg):
                     max_term_loss = max(max_term_loss, tl.cpu().item())
                     
                     # log inflow for terminal states
-                    inflows.append(in_flow.cpu().item())
+                    inflow_leaves.append(in_flow.cpu().item())
                     break
                 else:
                     fl = loss
@@ -387,8 +392,11 @@ def main(cfg):
     pickle.dump(trajectories,
                 gzip.open(f"{results_path}/trajectories.pkl.gz", 'ab'))
     
-    pickle.dump(inflows,
-                gzip.open(f"{results_path}/inflows.pkl.gz", 'ab'))
+    pickle.dump(inflow_leaves,
+                gzip.open(f"{results_path}/inflow_leaves.pkl.gz", 'ab'))
+
+    pickle.dump(outflow_source,
+                gzip.open(f"{results_path}/outflow_source.pkl.gz", 'ab'))
     
     pickle.dump(smiles,
                 gzip.open(f"{results_path}/smiles.pkl.gz", 'ab'))

@@ -180,7 +180,8 @@ def make_tanimoto_plot(experiment_id):
     T = 7 
     S = 0.7
 
-    smiles = np.unique(smiles[rewards > T])
+    _,idx = np.unique(smiles[rewards > T], return_index=True)
+    smiles = smiles[np.sort(idx)]
     
     diverse_modes = set()
     diverse_tanimoto = np.zeros(len(rewards))
@@ -202,7 +203,9 @@ def make_tanimoto_plot(experiment_id):
     plt.show()
 
 
-    
+
+
+
 
 
 
@@ -281,6 +284,81 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
     plt.savefig(filename)
 
 
+# Figure 16
+def make_scatter_inflow_reward_plot(experiment_id):
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    inflows = []
+    with gzip.open(f"results/{experiment_id}/inflows.pkl.gz") as fr:
+        try:
+            while True:
+                inflows.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    rewards = (np.array(rewards)[-10000:] / 8)**10
+    inflows = np.exp(np.array(inflows)[-10000:]) -2.5e-5
+
+    plt.scatter(rewards,inflows)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
+
+# Figure 17
+def make_empirical_density_inflow_reward_plot(experiment_id):
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    """ inflows = []
+    with gzip.open(f"results/{experiment_id}/inflows.pkl.gz") as fr:
+        try:
+            while True:
+                inflows.extend(pickle.load(fr))
+        except EOFError:
+            pass """
+
+    rewards = np.array(rewards)[-10000:]
+    print(np.max(rewards))
+    print(np.sum(rewards))
+    rewards /= np.sum(rewards)
+    linestyles = ['-', '--']
+    colors = ['blue', 'black']
+    legends = ["rewards","inflows"] 
+
+    # plot empirical density for each beta
+    for i, vals in enumerate([rewards,rewards]):
+        pdf, bins = np.histogram(vals, density=False, bins=40)
+        pdf = pdf / np.sum(pdf)
+        plt.semilogx(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
+        
+
+    plt.grid()
+    
+    plt.xlabel(r'$R(x)$')
+    plt.ylabel(r'$\hat{p}(R)$')
+    plt.legend()
+    plt.xticks([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1])
+    plt.xlim(1e-6,3e-1)
+
+    figures_path = f"reports/figures/{experiment_id}"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/empirical_density_inflow_reward.png"
+    plt.savefig(filename)
+
+
 # figure 18 (done)
 def make_leaf_flow_loss_plot(experiment_id):
     # path to loss file
@@ -293,6 +371,7 @@ def make_leaf_flow_loss_plot(experiment_id):
     flow_losses = []
     flow_losses_min = []
     flow_losses_max = []
+    hp = None
 
     with gzip.open(f"{losses_path}/losses.pkl.gz") as fr:
         try:
@@ -304,6 +383,7 @@ def make_leaf_flow_loss_plot(experiment_id):
                 flow_losses.extend(data["flow_losses"])
                 flow_losses_min.extend(data["flow_losses_min"])
                 flow_losses_max.extend(data["flow_losses_max"])
+                hp = data["hp"]
         except EOFError:
             pass
 
@@ -314,7 +394,9 @@ def make_leaf_flow_loss_plot(experiment_id):
     fls = []
     flsmin = []
     flsmax = []
-    nbins = 30
+    lambda_T = hp["lambda_T"]
+    nbins = 20
+    
     for i in range(6):
         # create bin
         left = 10**i
@@ -322,9 +404,9 @@ def make_leaf_flow_loss_plot(experiment_id):
         bins = np.linspace(left, right, nbins+1)
         for j in range(nbins):
             steps.append((bins[j]+bins[j+1]) / 2)
-            lls.append(np.mean(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
-            llsmin.append(np.min(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
-            llsmax.append(np.max(leaf_losses[int(bins[j]):int(bins[j+1]+1)]))
+            lls.append(np.mean(leaf_losses[int(bins[j]):int(bins[j+1]+1)]) / lambda_T)
+            llsmin.append(np.min(leaf_losses[int(bins[j]):int(bins[j+1]+1)]) / lambda_T)
+            llsmax.append(np.max(leaf_losses[int(bins[j]):int(bins[j+1]+1)]) / lambda_T)
             fls.append(np.mean(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
             flsmin.append(np.min(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
             flsmax.append(np.max(flow_losses[int(bins[j]):int(bins[j+1]+1)]))
@@ -337,15 +419,14 @@ def make_leaf_flow_loss_plot(experiment_id):
     plt.fill_between(steps, llsmin, llsmax, color="blue", alpha=0.2)
     plt.fill_between(steps, flsmin, flsmax, color="orange", alpha=0.2)
 
-    plt.ylim(0.00001,6000)
+    plt.ylim(0.0001,6000)
     plt.yticks([0.001,0.01,0.1,1,10,100,1000])
 
     plt.legend(["leaf loss", "flow loss"])
 
     plt.xlabel("SGD steps")
     plt.ylabel("loss")
-    plt.title("Flow and leaf losses")
-
+    plt.grid()
     file_id = len(leaf_losses)
     figures_path = f"reports/figures/{experiment_id}/{file_id}"
     os.makedirs(figures_path,exist_ok=True)
