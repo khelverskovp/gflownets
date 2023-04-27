@@ -224,13 +224,15 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
 
     plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+    
 
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    filename = f"{figures_path}/diverse_bemis_murcko_plot_{int(len(rewards))}_{T}.png"
+    filename = f"{figures_path}/diverse_bemis_murcko_plot_{T}.png"
     plt.savefig(filename)
+
 
 
 # Figure 16
