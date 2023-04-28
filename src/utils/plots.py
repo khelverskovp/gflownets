@@ -141,21 +141,16 @@ def make_top_k_plot(k_values, experiment_id):
 
 
 # Figure 14
-
-avg = []
-
 def is_diverse_tanimoto(smi, diverse_modes, S):
     fps = Chem.RDKFingerprint(Chem.MolFromSmiles(smi))
     for smi_ref in diverse_modes:
-        start_time = time.time()
         fps_ref = Chem.RDKFingerprint(Chem.MolFromSmiles(smi_ref))
         tanimoto_sim = DataStructs.FingerprintSimilarity(fps,fps_ref)
-        avg.append(time.time()-start_time)
         if tanimoto_sim >= S:
             return False
     return True
 
-def make_tanimoto_plot(experiment_id):
+def make_tanimoto_plot(T, S, experiment_id):
     #get rewards for experiment
     rewards = []
     with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
@@ -178,30 +173,43 @@ def make_tanimoto_plot(experiment_id):
     smiles = np.array(smiles)
     
     start_time = time.time()
-    T = 7 
-    S = 0.7
-
+    elapsed_time = 0
+    convert_indices = np.arange(len(rewards))[rewards>T]
     _,idx = np.unique(smiles[rewards > T], return_index=True)
-    smiles = smiles[np.sort(idx)]
+    # make sure we look at smiles in correct order
+    smiles_idx = np.sort(idx)
+    smiles = smiles[smiles_idx]
     
     diverse_modes = set()
     diverse_tanimoto = np.zeros(len(rewards))
-    print(len(smiles))
-    for i, smi in enumerate(smiles):
-        if i % 100 == 0:
-            end_time = time.time()
-            print(i, len(diverse_modes), "The last 100 iterations took:", end_time - start_time, "seconds")
-            start_time = end_time
-            print(np.mean(avg))
-        #if is_explored[smi]:
-        #    continue
+    print(f"Number of unique smiles: {len(smiles)}")
+    for i, (smi, smi_idx) in enumerate(zip(smiles,smiles_idx)):
         if is_diverse_tanimoto(smi, diverse_modes, S):
             diverse_modes.add(smi)
-            diverse_tanimoto[i] = 1
-        #is_explored[smi] = True
-    plt.xlim(0,1e6)
+            diverse_tanimoto[convert_indices[smi_idx]] = 1
+        if i % 100 == 0:
+            end_time = time.time()
+            elapsed_time += end_time - start_time
+            print(i, len(diverse_modes), "Total time is ", elapsed_time, "seconds")
+            start_time = end_time
+    """ plt.xlim(0,1e6)
     plt.plot(np.arange(len(diverse_tanimoto))+1, np.cumsum(diverse_tanimoto))
-    plt.show()
+    
+    plt.xlabel("states visited")
+    # set ylabel with the actual T value
+    plt.ylabel(f"# of modes with R > {T}")
+    plt.grid()
+    
+    plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+
+    figures_path = f"reports/figures/{experiment_id}"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/diverse_tanimoto_plot_{int(len(rewards))}_{T}.png"
+    plt.savefig(filename) """
+    #pickle.dump
 
 
 def make_diverse_bemis_murcko_plot(T, experiment_id):
@@ -221,35 +229,36 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
                 smiles.extend(pickle.load(fr))
         except EOFError:
             pass
-
+    
+    rewards = np.array(rewards)
+    smiles = np.array(smiles)
     unique_scaffold = defaultdict(lambda: True)
     is_bemis_murcko = np.zeros(len(rewards))
+    convert_indices = np.arange(len(rewards))[rewards>T]
+    smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
+    print(f"Number of unique smiles: {len(smiles)}")
     start_time = time.time() # get start time
     elapsed_time = 0
-    for i, smi in enumerate(smiles):
+    for i, (smi, smi_idx) in enumerate(zip(smiles,smiles_idx)):
         bemis_murcko = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(smi)))
-        if rewards[i] > T and unique_scaffold[bemis_murcko]:
+        if unique_scaffold[bemis_murcko]:
             unique_scaffold[bemis_murcko] = False
-            is_bemis_murcko[i] = 1
-        if i % 10000 == 0:
+            is_bemis_murcko[convert_indices[smi_idx]] = 1
+        if i % 100 == 0:
             end_time = time.time() # get end time
             elapsed_time += end_time - start_time # calculate elapsed time
             print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
             start_time = end_time
 
     # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
-    plt.plot(np.arange(len(smiles)),np.cumsum(is_bemis_murcko))
+    plt.plot(np.arange(len(is_bemis_murcko))+1,np.cumsum(is_bemis_murcko))
     plt.xlabel("states visited")
     # set ylabel with the actual T value
     plt.ylabel(f"# of modes with R > {T}")
     plt.grid()
 
     plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
-    try:
-        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
-    except:
-        import pdb
-        pdb.set_trace()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
 
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path, exist_ok=True)
@@ -270,20 +279,89 @@ def make_scatter_inflow_reward_plot(experiment_id):
             pass
     
     inflows = []
-    with gzip.open(f"results/{experiment_id}/inflows.pkl.gz") as fr:
+    with gzip.open(f"results/{experiment_id}/inflow_leaves.pkl.gz") as fr:
         try:
             while True:
                 inflows.extend(pickle.load(fr))
         except EOFError:
             pass
 
-    rewards = (np.array(rewards)[-10000:] / 8)**10
-    inflows = np.exp(np.array(inflows)[-10000:]) -2.5e-5
+    hp = None
+    with gzip.open(f"results/{experiment_id}/losses.pkl.gz") as fr:
+        try:
+            while True:
+                hp = pickle.load(fr)["hp"]
+                break
+        except EOFError:
+            pass
 
-    plt.scatter(rewards,inflows)
+    reward_T = hp["reward_T"]
+    reward_beta = hp["reward_beta"]
+    R_min = hp["R_min"]
+    
+    rewards = np.array(rewards)[-5000:]
+    rewards = (np.clip(rewards, R_min, np.max(rewards)) / reward_T)**reward_beta
+    inflows = np.array(inflows)[-5000:]
+
+    # make scatter plot
+    plt.scatter(rewards,inflows, s=7, alpha=0.3)
+
+    # make bin average
+    steps = []
+    bin_avg = []
+    nbins = 4
+    
+    for i in range(-5,0):
+        # create bin
+        left = 10**i
+        right = 10**(i+1)
+        bins = np.linspace(left, right, nbins+1)
+        for j in range(nbins):
+            steps.append((bins[j]+bins[j+1]) / 2)
+            # inflows for rewards with R > left and R < right
+            ifl = inflows[(rewards > bins[j]) & (rewards < bins[j+1])]
+            if len(ifl) == 0:
+                if len(bin_avg):
+                    bin_avg.append(bin_avg[-1])
+                else:
+                    steps.pop()
+                continue
+            bin_avg.append(np.mean(ifl))
+
+    plt.plot(steps,bin_avg, "purple",label="bin average")
+
+    # plot x = y
+    x = np.linspace(1e-4,1,10000)
+    y = x
+    plt.plot(x,y,"k", label = r"$x=y$")
+
+    # make logarithmic fit
+    a,r = np.polyfit(np.log(rewards), np.log(inflows), 1)
+    x = np.linspace(1e-4,1,10000)
+    y = np.exp(r + a*np.log(x))
+    l = "log-log linear regression\n"+r"$a=$"+f"{round(a,2)}" + " " + r"$r=$"+f"{round(r,2)}"
+    plt.plot(x,y,"orange",label=l)
+
+    plt.legend(loc="lower right")
+
+    plt.xlabel("score")
+    plt.ylabel("predicted unnormalized probability")
     plt.xscale('log')
     plt.yscale('log')
-    plt.show()
+
+    plt.xlim(1e-4,2)
+    plt.ylim(1e-4,2)
+
+    plt.xticks([1e-4,1e-3,1e-2,1e-1,1])
+    plt.yticks([1e-4,1e-3,1e-2,1e-1,1])
+    
+
+    figures_path = f"reports/figures/{experiment_id}"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/scatter_inflow_reward_plot.png"
+    plt.savefig(filename)
 
 # Figure 17
 def make_empirical_density_inflow_reward_plot(experiment_id):
@@ -295,36 +373,72 @@ def make_empirical_density_inflow_reward_plot(experiment_id):
         except EOFError:
             pass
     
-    """ inflows = []
-    with gzip.open(f"results/{experiment_id}/inflows.pkl.gz") as fr:
+    inflows = []
+    with gzip.open(f"results/{experiment_id}/inflow_leaves.pkl.gz") as fr:
         try:
             while True:
                 inflows.extend(pickle.load(fr))
         except EOFError:
-            pass """
+            pass
 
+    outflows = []
+    with gzip.open(f"results/{experiment_id}/outflow_source.pkl.gz") as fr:
+        try:
+            while True:
+                outflows.extend(pickle.load(fr))
+        except EOFError:
+            pass
+
+    hp = None
+    with gzip.open(f"results/{experiment_id}/losses.pkl.gz") as fr:
+        try:
+            while True:
+                hp = pickle.load(fr)["hp"]
+                break
+        except EOFError:
+            pass
+
+    reward_T = hp["reward_T"]
+    reward_beta = hp["reward_beta"]
+    R_min = hp["R_min"]
+        
     rewards = np.array(rewards)[-10000:]
-    print(np.max(rewards))
-    print(np.sum(rewards))
-    rewards /= np.sum(rewards)
-    linestyles = ['-', '--']
-    colors = ['blue', 'black']
+    rewards = (np.clip(rewards, R_min, np.max(rewards)) / reward_T)**reward_beta
+    inflows = np.array(inflows)[-10000:]
+    outflows = np.array(outflows)[-10000:]
+    linestyles = ['--', '-']
+    colors = ['blue', 'blue']
     legends = ["rewards","inflows"] 
-
+    
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    
+    nbins = [320,220]
     # plot empirical density for each beta
-    for i, vals in enumerate([rewards,rewards]):
-        pdf, bins = np.histogram(vals, density=False, bins=40)
+    for i, (vals, n) in enumerate(zip([rewards,inflows],nbins)):
+        _, bins = np.histogram(vals, bins=n)
+        logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+        pdf, bins = np.histogram(vals, density=False, bins=logbins)
         pdf = pdf / np.sum(pdf)
-        plt.semilogx(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
+        ax1.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
+        ax2.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
         
 
-    plt.grid()
+    ax1.grid()
+    ax1.set_xlabel("predicted " + r'$\hat{p}(x)$' + " and " + r'$\hat{R}(x)$' )
+    ax1.set_ylabel("empirical frequency of " + r'$\hat{p}(x)$')
+    ax2.set_ylabel("empirical frequency of " + r'$\hat{R}(x)$')
+    plt.xscale("log")
     
-    plt.xlabel(r'$R(x)$')
-    plt.ylabel(r'$\hat{p}(R)$')
-    plt.legend()
     plt.xticks([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1])
     plt.xlim(1e-6,3e-1)
+    ax1.legend()
+    ax1.spines['right'].set_visible(False)
+    ax2.spines['right'].set_linestyle("--")
+    ax2.spines['top'].set_linewidth(1.5)
+    ax2.spines['bottom'].set_linewidth(1.5)
+    ax2.spines['left'].set_linewidth(1.5)
+    ax2.spines['right'].set_linewidth(1.5)
 
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path, exist_ok=True)

@@ -17,25 +17,22 @@ if __name__ == "__main__":
     #make_empirical_density_plot()
 
     # experiment_id
-    experiment_id = "experiment_3"
-    d = defaultdict(lambda: False)
-    i = 0
-    with gzip.open(f"results/{experiment_id}_base/trajectories.pkl.gz") as fr:
-        try:
-            while True:
-                data = pickle.load(fr)
-                if i != 233: 
-                    pickle.dump(data,
-                        gzip.open(f"results/{experiment_id}/trajectories.pkl.gz", 'ab'))
-                i += 1        
-        except EOFError:
-            pass
-    
-    
+    experiment_id = "experiment_2"
     k_values = [10,100,1000]
     #make_top_k_plot(k_values, experiment_id)
 
-    T = 7.5
+    T = 7
+    S = 0.7
+    #make_tanimoto_plot(T, S, experiment_id)
+
+    T = 8
     #make_diverse_bemis_murcko_plot(T, experiment_id)
 
+    #make_scatter_inflow_reward_plot(experiment_id)
+
+    make_empirical_density_inflow_reward_plot(experiment_id)
+
+
+
     #make_leaf_flow_loss_plot(experiment_id)
+
