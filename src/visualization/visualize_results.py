@@ -17,20 +17,18 @@ if __name__ == "__main__":
     #make_empirical_density_plot()
 
     # experiment_id
-    experiment_id = "experiment_2"
+    experiment_id = "experiment_1"
     k_values = [10,100,1000]
     #make_top_k_plot(k_values, experiment_id)
 
-    T = 7
-    S = 0.7
-    #make_tanimoto_plot(T, S, experiment_id)
+    make_tanimoto_plot(experiment_id)
 
     T = 8
     #make_diverse_bemis_murcko_plot(T, experiment_id)
 
     #make_scatter_inflow_reward_plot(experiment_id)
 
-    make_empirical_density_inflow_reward_plot(experiment_id)
+    #make_empirical_density_inflow_reward_plot(experiment_id)
 
 
 

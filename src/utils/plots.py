@@ -141,59 +141,24 @@ def make_top_k_plot(k_values, experiment_id):
 
 
 # Figure 14
-def is_diverse_tanimoto(smi, diverse_modes, S):
-    fps = Chem.RDKFingerprint(Chem.MolFromSmiles(smi))
-    for smi_ref in diverse_modes:
-        fps_ref = Chem.RDKFingerprint(Chem.MolFromSmiles(smi_ref))
-        tanimoto_sim = DataStructs.FingerprintSimilarity(fps,fps_ref)
-        if tanimoto_sim >= S:
-            return False
-    return True
+def make_tanimoto_plot(experiment_id):
+    # get tanimoto counts for experiment
+    tanimoto_counts = None
+    with gzip.open(f"results/{experiment_id}/tanimoto_counts.pkl.gz") as fr:
+        try:
+            while True:
+                data = pickle.load(fr)
+                tanimoto_counts = data["tanimoto"]
+                T = data["T"]
+                S = data["S"]
+                print(f"TANIMOTO WAS RUN WITH T={T} and S={S}")
+                break
+        except EOFError:
+            pass
 
-def make_tanimoto_plot(T, S, experiment_id):
-    #get rewards for experiment
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    smiles = []
-    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
-        try:
-            while True:
-                smiles.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    
-    rewards = np.array(rewards)
-    smiles = np.array(smiles)
-    
-    start_time = time.time()
-    elapsed_time = 0
-    convert_indices = np.arange(len(rewards))[rewards>T]
-    _,idx = np.unique(smiles[rewards > T], return_index=True)
-    # make sure we look at smiles in correct order
-    smiles_idx = np.sort(idx)
-    smiles = smiles[smiles_idx]
-    
-    diverse_modes = set()
-    diverse_tanimoto = np.zeros(len(rewards))
-    print(f"Number of unique smiles: {len(smiles)}")
-    for i, (smi, smi_idx) in enumerate(zip(smiles,smiles_idx)):
-        if is_diverse_tanimoto(smi, diverse_modes, S):
-            diverse_modes.add(smi)
-            diverse_tanimoto[convert_indices[smi_idx]] = 1
-        if i % 100 == 0:
-            end_time = time.time()
-            elapsed_time += end_time - start_time
-            print(i, len(diverse_modes), "Total time is ", elapsed_time, "seconds")
-            start_time = end_time
-    """ plt.xlim(0,1e6)
-    plt.plot(np.arange(len(diverse_tanimoto))+1, np.cumsum(diverse_tanimoto))
+
+    plt.xlim(0,1e6)
+    plt.plot(np.arange(len(tanimoto_counts))+1, tanimoto_counts)
     
     plt.xlabel("states visited")
     # set ylabel with the actual T value
@@ -207,9 +172,9 @@ def make_tanimoto_plot(T, S, experiment_id):
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    filename = f"{figures_path}/diverse_tanimoto_plot_{int(len(rewards))}_{T}.png"
-    plt.savefig(filename) """
-    #pickle.dump
+    filename = f"{figures_path}/diverse_tanimoto_plot_{int(len(tanimoto_counts))}_{S}.png"
+    plt.savefig(filename)
+    
 
 
 def make_diverse_bemis_murcko_plot(T, experiment_id):
