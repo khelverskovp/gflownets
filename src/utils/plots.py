@@ -7,6 +7,7 @@ from src.utils.mols import BlockMolecule
 from src.utils.proxy import Proxy
 import torch
 from rdkit import Chem, DataStructs
+from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol, MurckoScaffoldSmiles
 import time
 import pandas as pd
@@ -130,7 +131,7 @@ def make_top_k_plot(k_values, experiment_id):
 
     plt.legend()
     file_id = len(rewards)
-    figures_path = f"reports/figures/{experiment_id}/{int(file_id / 4)}"
+    figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
     
     # save file
@@ -203,26 +204,6 @@ def make_tanimoto_plot(experiment_id):
     plt.show()
 
 
-
-
-
-
-
-
-    
-
-
-from rdkit import Chem
-from rdkit.Chem.Scaffolds import MurckoScaffold
-import numpy as np
-import matplotlib.pyplot as plt
-
-from rdkit import Chem
-from rdkit.Chem.Scaffolds import MurckoScaffold
-import numpy as np
-import matplotlib.pyplot as plt
-import time
-
 def make_diverse_bemis_murcko_plot(T, experiment_id):
     # get rewards and smiles for experiment 
     rewards = []
@@ -240,22 +221,22 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
                 smiles.extend(pickle.load(fr))
         except EOFError:
             pass
-    
-    # only choose smiles = first 10000 smiles 
 
     unique_scaffold = defaultdict(lambda: True)
     is_bemis_murcko = np.zeros(len(rewards))
+    start_time = time.time() # get start time
+    elapsed_time = 0
     for i, smi in enumerate(smiles):
-        start_time = time.time() # get start time
         bemis_murcko = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(smi)))
         if rewards[i] > T and unique_scaffold[bemis_murcko]:
             unique_scaffold[bemis_murcko] = False
             is_bemis_murcko[i] = 1
-        end_time = time.time() # get end time
-        elapsed_time = end_time - start_time # calculate elapsed time
-        print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
+        if i % 10000 == 0:
+            end_time = time.time() # get end time
+            elapsed_time += end_time - start_time # calculate elapsed time
+            print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
+            start_time = end_time
 
-    
     # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
     plt.plot(np.arange(len(smiles)),np.cumsum(is_bemis_murcko))
     plt.xlabel("states visited")
@@ -263,24 +244,18 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
     plt.ylabel(f"# of modes with R > {T}")
     plt.grid()
 
-    # for each beta in betas add a legend \beta$ = value of beta 
-
-    # legends = [f"\beta$={beta}" for beta in betas]
-    legends = [r'$\beta$ = 10', r'$\beta$ = 1', r'$\beta$ = 4', 'proxy dataset']
-
-    # and add "proxy dataset to the legend"
-    legends.append("proxy dataset")
-
     plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
-    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
-
-    
+    try:
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+    except:
+        import pdb
+        pdb.set_trace()
 
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    filename = f"{figures_path}/diverse_bemis_murcko_plot.png"
+    filename = f"{figures_path}/diverse_bemis_murcko_plot_{int(len(rewards))}_{T}.png"
     plt.savefig(filename)
 
 
@@ -428,7 +403,7 @@ def make_leaf_flow_loss_plot(experiment_id):
     plt.ylabel("loss")
     plt.grid()
     file_id = len(leaf_losses)
-    figures_path = f"reports/figures/{experiment_id}/{file_id}"
+    figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
 
     # save file
@@ -439,39 +414,6 @@ def make_leaf_flow_loss_plot(experiment_id):
 
 
 
-def make_scaffold_plot(experiment_id):
-    #get rewards for experiment
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    smiles = []
-    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
-        try:
-            while True:
-                smiles.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    smiles = smiles[:10000]
-    rewards = rewards[:10000]
-        
-    from collections import defaultdict
-    start_time = time.time()
-    unique_scaffold = defaultdict(lambda: True)
-    T = 7.5
-    is_bemis_murcko = np.zeros(len(rewards))
-    for i, smi in enumerate(smiles):
-        bemis_murcko = MurckoScaffoldSmiles(smi)
-        if rewards[i] > T and unique_scaffold[bemis_murcko]:
-            is_bemis_murcko[i] = 1
-            unique_scaffold[bemis_murcko] = False
-    plt.plot(np.arange(len(smiles)),np.cumsum(is_bemis_murcko))
-    plt.show()
 
 
 
@@ -508,7 +450,7 @@ def make_rewards_plot(experiment_id):
     
 
     file_id = len(rids)
-    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
+    figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
 
 
@@ -548,7 +490,7 @@ def make_reward_threshold_plot(thresholds, experiment_id):
         ax.set_ylabel(f"# of modes with R>{T}")
         ax.grid(True)
     
-    figures_path = f"reports/figures/{experiment_id}/{int(len(rids) / 4)}"
+    figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
 
     fig.suptitle(f"Number of high-reward molecules with different thresholds")

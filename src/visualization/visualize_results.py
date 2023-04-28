@@ -11,58 +11,31 @@ from torch_geometric.data import Batch
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+from collections import defaultdict
 
 if __name__ == "__main__":
+    #make_empirical_density_plot()
+
     # experiment_id
-    """ experiment_id = "experiment_1"
-
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+    experiment_id = "experiment_3"
+    d = defaultdict(lambda: False)
+    i = 0
+    with gzip.open(f"results/{experiment_id}_base/trajectories.pkl.gz") as fr:
         try:
             while True:
-                rewards.extend(pickle.load(fr))
+                data = pickle.load(fr)
+                if i != 233: 
+                    pickle.dump(data,
+                        gzip.open(f"results/{experiment_id}/trajectories.pkl.gz", 'ab'))
+                i += 1        
         except EOFError:
             pass
     
-    print(np.max(rewards[:52000]),np.mean(rewards[:52000]))
-
-    experiment_id = "experiment_4"
-
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
     
-    print(np.max(rewards),np.mean(rewards))
-    """
-    experiment_id = "experiment_2"
-    
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    print(np.max(rewards),np.mean(rewards))
-    print(len(rewards))
-
-    experiment_id = "experiment_2"
     k_values = [10,100,1000]
-    make_top_k_plot(k_values, experiment_id)
+    #make_top_k_plot(k_values, experiment_id)
 
-    make_empirical_density_plot()
-    make_leaf_flow_loss_plot(experiment_id)
+    T = 7.5
+    #make_diverse_bemis_murcko_plot(T, experiment_id)
 
-    #make_diverse_bemis_murcko_plot(7.5, "experiment_1")
-
-    #make_tanimoto_plot(experiment_id)
-
-    #experiment_id = ["experiment_4","experiment_5"]
-    #[make_empirical_density_inflow_reward_plot(eid) for eid in experiment_id]
-    #make_empirical_density_inflow_reward_plot("experiment_1")
-    #make_scatter_inflow_reward_plot("experiment_2")
+    #make_leaf_flow_loss_plot(experiment_id)
