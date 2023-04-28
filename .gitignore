@@ -101,3 +101,7 @@ wandb/
 outputs/
 
 models/
+
+scripts/
+
+src/visualization/visualize_results.py
