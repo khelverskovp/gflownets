@@ -152,7 +152,6 @@ def make_tanimoto_plot(experiment_id):
                 T = data["T"]
                 S = data["S"]
                 print(f"TANIMOTO WAS RUN WITH T={T} and S={S}")
-                break
         except EOFError:
             pass
 
