@@ -67,12 +67,21 @@ def compute_tanimoto_counts(T, S, experiment_id):
                  "T": T,
                  "S": S,
                  "iterations": i},
-                gzip.open(f"{results_path}/tanimoto_counts.pkl.gz", 'ab'))
+                gzip.open(f"{results_path}/tanimoto_counts.pkl.gz", 'wb'))
+    
+    pickle.dump({"tanimoto": np.cumsum(diverse_tanimoto),
+                 "T": T,
+                 "S": S,
+                 "iterations": i},
+                gzip.open(f"{results_path}/tanimoto_counts.pkl.gz", 'wb'))
     
 
 
 if __name__ == "__main__":
     experiment_id = "experiment_1"
+
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.INFO, format=log_fmt)
 
     T = 7
     S = 0.7
