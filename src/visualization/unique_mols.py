@@ -13,7 +13,7 @@ import os
 import pandas as pd
 import json
 
-path = "results/experiment_1/"
+path = "results/experiment_5/"
 
 smiles = []
 with gzip.open(f"{path}smiles.pkl.gz") as fr:
