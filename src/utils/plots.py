@@ -12,6 +12,8 @@ from rdkit.Chem.Scaffolds.MurckoScaffold import GetScaffoldForMol, MurckoScaffol
 import time
 import pandas as pd
 from scipy import stats
+import json
+import seaborn as sns
 
 from collections import defaultdict
 
@@ -191,39 +193,198 @@ def make_top_k_plot(k_values, experiment_ids):
 
 
 # Figure 14
-def make_tanimoto_plot(experiment_id, T):
-    # get tanimoto counts for experiment
-    tanimoto_counts = None
-    with gzip.open(f"results/{experiment_id}/tanimoto_counts_{T}.pkl.gz") as fr:
-        try:
-            while True:
-                data = pickle.load(fr)
-                tanimoto_counts = data["tanimoto"]
-                T = data["T"]
-                S = data["S"]
-                print(f"TANIMOTO WAS RUN WITH T={T} and S={S}")
-        except EOFError:
-            pass
-
-
-    plt.xlim(0,1e6)
-    plt.plot(np.arange(len(tanimoto_counts))+1, tanimoto_counts)
+def make_tanimoto_plot(experiment_ids, T, default=False):
+    # default fingerprint is RDK fingerprint with 2048 bits
+    # get tanimoto counts for experiments
     
-    plt.xlabel("states visited")
+    tanimoto_counts = {eid: None for eid in experiment_ids}
+
+    for eid in experiment_ids:
+        with gzip.open(f"results/{eid}/tanimoto_counts_{T}.pkl.gz") as fr:
+            try:
+                while True:
+                    data = pickle.load(fr)
+                    tanimoto_counts[eid] = data["tanimoto"]
+                    T = data["T"]
+                    S = data["S"]
+                    print(f"TANIMOTO WAS RUN WITH T={T} and S={S}")
+            except EOFError:
+                pass
+
+    fingerprint_ids = list(tanimoto_counts[experiment_ids[0]].keys())
+    
+    # number of molecules
+    N = len(tanimoto_counts[experiment_ids[0]][fingerprint_ids[0]])
+
+    tanimoto_counts_avg = {fid: np.zeros(N) for fid in fingerprint_ids}
+
+    for eid in experiment_ids:
+        for fid in fingerprint_ids:
+            tanimoto_counts_avg[fid] += tanimoto_counts[eid][fid] / len(experiment_ids)
+
+    # colors
+    # rdk - blue
+    # morgan - red
+    colors = {fid: "blue" if "rdk" in fid else "red" for fid in fingerprint_ids}
+
+    # linestyle
+    # 512 - dotted
+    # 1024 - dashed
+    # 2048 - solid
+    linestyles = {}
+    for fid in fingerprint_ids:
+        if "512" in fid:
+            linestyles[fid] = ":"
+        elif "1024" in fid:
+            linestyles[fid] = "--"
+        elif "2048" in fid:
+            linestyles[fid] = "-"
+        
+    # if default is true only plot rdk2048
+    steps = np.arange(N)+1
+    
+    fig, ax = plt.subplots(figsize=(6.2, 4.1))
+
+    for fid in fingerprint_ids:
+        if fid != "rdk2048" and default:
+            continue
+        label = fid if not default else "GFlowNet"
+        plt.plot(steps, tanimoto_counts_avg[fid], color=colors[fid],linestyle=linestyles[fid],label=label)
+    
+    
+    fontsize = 14
+    plt.xlabel("states visited",fontsize=fontsize)
     # set ylabel with the actual T value
-    plt.ylabel(f"# of modes with R > {T}")
+    plt.ylabel(f"avg # of modes with R > {T}", fontsize=fontsize)
     plt.grid()
     
     plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+    
+    plt.xlim(0,1e6)
 
-    figures_path = f"reports/figures/{experiment_id}"
+    if not default:
+        plt.ylim(0,13000)
+        plt.yticks([0, 2000, 4000, 6000, 8000, 10000, 12000])
+
+    plt.legend(loc="upper left",fontsize=fontsize)
+
+    [x.set_linewidth(1.5) for x in ax.spines.values()]
+
+     # use get_offset_text().set_fontsize(fontsize)
+    plt.gca().get_xaxis().get_offset_text().set_fontsize(fontsize)
+    
+    # set the size of the ticklabel to fontsize 
+    plt.tick_params(axis='both', labelsize=fontsize)
+
+    # set the size of x.set_linewdtith to 1.5
+    # set the size of spines to 1.5 for all spines
+    plt.gca().spines['bottom'].set_linewidth(1.5)
+    plt.gca().spines['top'].set_linewidth(1.5)
+    plt.gca().spines['left'].set_linewidth(1.5)
+    plt.gca().spines['right'].set_linewidth(1.5)
+
+    #set xaxis set_tick_parsm width=2 length=5
+    plt.gca().xaxis.set_tick_params(width=2, length=5)
+    # and yaxis
+    plt.gca().yaxis.set_tick_params(width=2, length=5)
+    
+    plt.tight_layout()
+
+    figures_path = f"reports/figures/{experiment_ids[0]}"
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    filename = f"{figures_path}/diverse_tanimoto_plot_{int(len(tanimoto_counts))}_{T}.png"
+    filename = f"{figures_path}/diverse_tanimoto_plot_{T}{'_default' if default else ''}.png"
     plt.savefig(filename)
     
+
+def make_total_unique_molecules_plot(experiment_ids, T):
+    # get total unique molecules found
+
+    unique_molecules_avg = None
+    for eid in experiment_ids:
+        rewards = []
+        with gzip.open(f"results/{eid}/rewards.pkl.gz") as fr:
+            try:
+                while True:
+                    rewards.extend(pickle.load(fr))
+            except EOFError:
+                pass
+        
+        if unique_molecules_avg is None:
+            unique_molecules_avg = np.zeros(len(rewards))
+
+        smiles = []
+        with gzip.open(f"results/{eid}/smiles.pkl.gz") as fr:
+            try:
+                while True:
+                    smiles.extend(pickle.load(fr))
+            except EOFError:
+                pass
+        
+        
+        rewards = np.array(rewards)
+        smiles = np.array(smiles)
+    
+        convert_indices = np.arange(len(rewards))[rewards>T]
+        _,idx = np.unique(smiles[rewards > T], return_index=True)
+    
+        unique_molecules = np.zeros(len(rewards))
+
+        unique_molecules[convert_indices[idx]] = 1
+
+        unique_molecules_avg += np.cumsum(unique_molecules) / len(experiment_ids)
+
+    steps = np.arange(len(unique_molecules_avg)) + 1
+
+    fig, ax = plt.subplots(figsize=(6.2, 4.1))
+
+    plt.plot(steps,unique_molecules_avg, color="black",linestyle="-")
+
+    fontsize = 14
+    plt.xlabel("states visited",fontsize=fontsize)
+    # set ylabel with the actual T value
+    plt.ylabel(f"avg # of molecules with R > {T}", fontsize=fontsize)
+    plt.grid()
+    
+    plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+    
+    plt.xlim(0,1e6)
+
+    plt.ylim(0,13000)
+    plt.yticks([0, 2000, 4000, 6000, 8000, 10000, 12000])
+
+    [x.set_linewidth(1.5) for x in ax.spines.values()]
+
+     # use get_offset_text().set_fontsize(fontsize)
+    plt.gca().get_xaxis().get_offset_text().set_fontsize(fontsize)
+    
+    # set the size of the ticklabel to fontsize 
+    plt.tick_params(axis='both', labelsize=fontsize)
+
+    # set the size of x.set_linewdtith to 1.5
+    # set the size of spines to 1.5 for all spines
+    plt.gca().spines['bottom'].set_linewidth(1.5)
+    plt.gca().spines['top'].set_linewidth(1.5)
+    plt.gca().spines['left'].set_linewidth(1.5)
+    plt.gca().spines['right'].set_linewidth(1.5)
+
+    #set xaxis set_tick_parsm width=2 length=5
+    plt.gca().xaxis.set_tick_params(width=2, length=5)
+    # and yaxis
+    plt.gca().yaxis.set_tick_params(width=2, length=5)
+    
+    plt.tight_layout()
+
+    figures_path = f"reports/figures/{experiment_ids[0]}"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/total_unique_molecules_plot_{T}.png"
+    plt.savefig(filename)
+
 
 # Figure 15
 def get_number_of_diverse_bemis_murcko(T,experiment_id):
@@ -268,64 +429,6 @@ def get_number_of_diverse_bemis_murcko(T,experiment_id):
         
     return is_bemis_murcko
 
-
-def make_diverse_bemis_murcko_plot(T, experiment_id):
-    # get rewards and smiles for experiment 
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    smiles = []
-    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
-        try:
-            while True:
-                smiles.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    rewards = np.array(rewards)
-    smiles = np.array(smiles)
-    unique_scaffold = defaultdict(lambda: True)
-    is_bemis_murcko = np.zeros(len(rewards))
-    convert_indices = np.arange(len(rewards))[rewards>T]
-    smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
-    print(f"Number of unique smiles: {len(smiles)}")
-    start_time = time.time() # get start time
-    elapsed_time = 0
-    for i, (smi, smi_idx) in enumerate(zip(smiles,smiles_idx)):
-        bemis_murcko = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(smi)))
-        if unique_scaffold[bemis_murcko]:
-            unique_scaffold[bemis_murcko] = False
-            is_bemis_murcko[convert_indices[smi_idx]] = 1
-        if i % 100 == 0:
-            end_time = time.time() # get end time
-            elapsed_time += end_time - start_time # calculate elapsed time
-            print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
-            start_time = end_time
-
-    # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
-    plt.plot(np.arange(len(is_bemis_murcko))+1,np.cumsum(is_bemis_murcko))
-    plt.xlabel("states visited")
-    # set ylabel with the actual T value
-    plt.ylabel(f"# of modes with R > {T}")
-    plt.grid()
-
-    plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
-    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
-    
-
-    figures_path = f"reports/figures/{experiment_id}"
-    os.makedirs(figures_path, exist_ok=True)
-
-    # save file
-    filename = f"{figures_path}/diverse_bemis_murcko_plot_{T}.png"
-    plt.savefig(filename)
-
-
 def make_bemis_murcko_avg_plot(T):
     is_bemis_murcko1 = get_number_of_diverse_bemis_murcko(T, "experiment_1")
     is_bemis_murcko4 = get_number_of_diverse_bemis_murcko(T, "experiment_4")
@@ -360,7 +463,7 @@ def make_bemis_murcko_avg_plot(T):
     plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6], fontsize=fontsize)
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
 
-    # set the size of the ticklael to fontsize 
+    # set the size of the ticklabel to fontsize 
     plt.tick_params(axis='both', labelsize=fontsize)
 
     # set the size of x.set_linewdtith to 1.5
@@ -422,6 +525,19 @@ def make_scatter_inflow_reward_plot(experiment_id):
     rewards = (np.clip(rewards, R_min, np.max(rewards)) / reward_T)**reward_beta
     inflows = np.array(inflows)[-5000:]
 
+    # remove outliers (i.e. points with very large inflows)
+    mask = (inflows < 2)
+
+    if len(inflows[mask^np.ones(5000,dtype=np.bool_)]):
+        print(f"biggest outlier: {np.max(inflows[mask^np.ones(5000,dtype=np.bool_)])}")
+    print(f"all outliers: {inflows[mask^np.ones(5000,dtype=np.bool_)]}")
+    print(f"{5000-np.sum(mask)} outliers")
+
+    rewards = rewards[mask]
+    inflows = inflows[mask]
+
+    
+
     fig, ax = plt.subplots(figsize=(6.97, 4.1))
 
     # make scatter plot
@@ -451,16 +567,16 @@ def make_scatter_inflow_reward_plot(experiment_id):
 
     ax.plot(steps,bin_avg, "purple",label="bin average", linewidth=2)
 
-    # plot x = y
     x = np.linspace(1e-4,1,10000)
+
+    # plot x = y
     y = x
     ax.plot(x,y,"k", label = r"$x=y$", linewidth=2)
 
     # make logarithmic fit
-    a,r = np.polyfit(np.log(rewards), np.log(inflows), 1)
-    x = np.linspace(1e-4,1,10000)
-    y = np.exp(r + a*np.log(x))
-    l = "log-log linear regression\n"+r"$a=$"+f"{round(a,2)}" + " " + r"$r=$"+f"{round(r,2)}"
+    a, b, r_value, p_value, std_err = stats.linregress(np.log(rewards), np.log(inflows))
+    y = np.exp(b + a*np.log(x))
+    l = "log-log linear regression\n"+r"$a=$"+f"{round(a,2)}" + " " + r"$r=$"+f"{round(r_value,2)}"
     ax.plot(x,y,"orange",label=l, linewidth=2)
 
     fontsize = 12
@@ -670,9 +786,8 @@ def make_leaf_flow_loss_plot(experiment_id):
 
 
 # Extra plot
-# Extra plot
 # taken from https://stackoverflow.com/questions/14270391/how-to-plot-multiple-bars-grouped
-def bar_plot(ax, data, xticks, colors=None, total_width=0.8, single_width=1, legend=True):
+def bar_plot(ax, data, xticks, colors=None, total_width=0.8, single_width=1):
     """Draws a bar plot with multiple bars per data point.
     Parameters
     ----------
@@ -697,8 +812,6 @@ def bar_plot(ax, data, xticks, colors=None, total_width=0.8, single_width=1, leg
         The relative width of a single bar within a group. 1 means the bars
         will touch eachother within a group, values less than 1 will make
         these bars thinner.
-    legend: bool, optional, default: True
-        If this is set to true, a legend will be added to the axis.
     """
 
     # Check if colors where provided, otherwhise use the default color cycle
@@ -721,74 +834,337 @@ def bar_plot(ax, data, xticks, colors=None, total_width=0.8, single_width=1, leg
 
         # Draw a bar for every value of that type
         for x, y in zip(xticks,values):
-            bar = ax.bar(x + x_offset, y, width=bar_width * single_width, color=colors[i % len(colors)])
+            bar = ax.bar(x + x_offset, y, width=bar_width * single_width, color=colors[i % len(colors)],zorder=3)
 
         # Add a handle to the last drawn bar, which we'll need for the legend
         bars.append(bar[0])
-
-    # Draw legend if we need
-    if legend:
-        ax.legend(bars, data.keys())
     
-    plt.xticks(xticks)
+    return bars
 
 
-def make_blocksize_bar_plot(T, experiment_ids):
+def make_blocksize_bar_plot(thresholds, experiment_ids):
+    assert len(thresholds) == 4, "you must give 4 thresholds"
     # min blocks is 2
     offset = 2
-    data = {
-        "stop": [0 for i in range(2,9)],
-        "nostop": [0 for i in range(2,9)],
-    }
 
-    for eid in experiment_ids:
-        trajectories = []
-        with gzip.open(f"results/{eid}/trajectories.pkl.gz") as fr:
-            try:
-                while True:
-                    trajectories.extend(pickle.load(fr))
-            except EOFError:
-                pass
+    fig, axs = plt.subplots(nrows=2,ncols=2,figsize=(6.2*2, 4.1*2))
+
+    for T, ax in zip(thresholds,axs.ravel()):
+        print(f"Doing threshold {T}")
+        data = {
+            "with stop action": [0 for i in range(2,9)],
+            "without stop action": [0 for i in range(2,9)],
+        }
+
+        keys = list(data.keys())
+
+        for eid in experiment_ids:
+            trajectories = []
+            with gzip.open(f"results/{eid}/trajectories.pkl.gz") as fr:
+                try:
+                    while True:
+                        trajectories.extend(pickle.load(fr))
+                except EOFError:
+                    pass
+            
+            smiles = []
+            with gzip.open(f"results/{eid}/smiles.pkl.gz") as fr:
+                try:
+                    while True:
+                        smiles.extend(pickle.load(fr))
+                except EOFError:
+                    pass
+
+            rewards = []
+            with gzip.open(f"results/{eid}/rewards.pkl.gz") as fr:
+                try:
+                    while True:
+                        rewards.extend(pickle.load(fr))
+                except EOFError:
+                    pass
+            
+            rewards = np.array(rewards)
+            smiles = np.array(smiles)
+
+            smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
+
+            for idx in smiles_idx:
+                if trajectories[idx][-1][0] == -1:
+                    data[keys[0]][len(trajectories[idx])-1-offset] += 1
+                else:
+                    data[keys[1]][len(trajectories[idx])-offset] += 1
         
-        smiles = []
-        with gzip.open(f"results/{eid}/smiles.pkl.gz") as fr:
-            try:
-                while True:
-                    smiles.extend(pickle.load(fr))
-            except EOFError:
-                pass
-
-        rewards = []
-        with gzip.open(f"results/{eid}/rewards.pkl.gz") as fr:
-            try:
-                while True:
-                    rewards.extend(pickle.load(fr))
-            except EOFError:
-                pass
+        for i in range(2,9):
+            data[keys[0]][i-offset] /= len(experiment_ids)
+            data[keys[1]][i-offset] /= len(experiment_ids)
         
-        rewards = np.array(rewards)
-        smiles = np.array(smiles)
+        
+        xticks = range(2,9)
+        ax.grid(zorder=0)
+        bars = bar_plot(ax, data, xticks, colors=["red","blue"], total_width=.8, single_width=.9)
 
-        smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
+        fontsize = 14
+        ax.set_xlabel("Number of blocks in molecule",fontsize=fontsize)
+        # set ylabel with the actual T value
+        ax.set_ylabel(f"avg # of molecules with R > {T}", fontsize=fontsize)
+        
+        ax.set_xticks(xticks)
+        #ax.set_yticks([0,2000,4000,6000])
+        
+        # set border linewidth
+        [x.set_linewidth(1.5) for x in ax.spines.values()]
 
-        for idx in smiles_idx:
-            if trajectories[idx][-1][0] == -1:
-                data["stop"][len(trajectories[idx])-1-offset] += 1
-            else:
-                data["nostop"][len(trajectories[idx])-offset] += 1
+        # set the size of the ticklabel to fontsize 
+        ax.tick_params(axis='both', labelsize=fontsize)
+
+        ax.xaxis.set_tick_params(width=2, length=5)
+        # and yaxis
+        ax.yaxis.set_tick_params(width=2, length=5)
+
+        
+        ax.legend(bars, data.keys(), loc="upper left", fontsize=fontsize)
+
+        ax.get_yaxis().set_label_coords(-0.2,0.5)
     
-    for i in range(2,9):
-        data["stop"][i-offset] /= len(experiment_ids)
-        data["nostop"][i-offset] /= len(experiment_ids)
-    print("DONE")
-    fig, ax = plt.subplots()
-    bar_plot(ax, data, range(2,9), colors=["red","blue"], total_width=.8, single_width=.9)
+    fig.tight_layout(pad=3.0)
 
-    figures_path = f"reports/figures"
+    figures_path = f"reports/figures/{experiment_ids[0]}"
     os.makedirs(figures_path,exist_ok=True)
 
 
-    filename = f"{figures_path}/blocksize_histogram_{T}.png"
+    filename = f"{figures_path}/blocksize_histogram.png"
+    plt.savefig(filename)
+
+
+def make_blocksize_distribution_plot():
+    # load dataset
+    input_filepath = "data/processed/"
+    filename = "docked_mols.csv"
+    path = f"{input_filepath}/{filename}"
+
+    df = pd.read_csv(path)
+
+    columns = df.columns
+    
+    # the remaining columns contains lists of numbers
+    # they are in string form however in the native dataframe
+    # should be converted to list type 
+    for name in columns[2:]:
+        df.loc[:,name] = df[name].apply(json.loads)
+
+    # loop over all blocksize in dataset
+    bsizes = {bs: 0 for bs in range(1,13)}
+    for blockidx in df.blockidxs:
+        bsizes[len(blockidx)] += 1
+    
+    fig, ax = plt.subplots(figsize=(6.6,4.1))
+
+    ax.grid(zorder=0)
+    ax.bar(list(bsizes.keys()), list(bsizes.values()), zorder=3)
+
+    fontsize = 14
+    ax.set_xlabel("Number of blocks in molecule",fontsize=fontsize)
+    # set ylabel with the actual T value
+    ax.set_ylabel(f"Number of molecules", fontsize=fontsize)
+    
+    # set border linewidth
+    [x.set_linewidth(1.5) for x in ax.spines.values()]
+
+    # set the size of the ticklabel to fontsize 
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    ax.xaxis.set_tick_params(width=2, length=5)
+    # and yaxis
+    ax.yaxis.set_tick_params(width=2, length=5)
+
+    ax.set_title("Distribution of blocksizes in the ZINC dataset",fontsize=fontsize, fontweight="bold")
+
+    plt.tight_layout()
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/blocksize_distribution_dataset.png"
+    plt.savefig(filename)
+
+def make_nonhydrogen_distribution_plot():
+    # load dataset
+    input_filepath = "data/processed/"
+    filename = "docked_mols.csv"
+    path = f"{input_filepath}/{filename}"
+
+    df = pd.read_csv(path)
+
+    columns = df.columns
+    
+    # the remaining columns contains lists of numbers
+    # they are in string form however in the native dataframe
+    # should be converted to list type 
+    for name in columns[2:]:
+        df.loc[:,name] = df[name].apply(json.loads)
+
+    # the last element in slices shows how many nonhydrogen atoms are present in the molecule
+    nhsizes = [s[-1] for s in df.slices]
+    nhdict = {nh: 0 for nh in range(1,max(nhsizes)+1)}
+    for nhsize in nhsizes:
+        nhdict[nhsize] += 1
+    
+    fig, ax = plt.subplots(figsize=(6.6,4.1))
+
+    ax.grid(zorder=0)
+    ax.bar(list(nhdict.keys()), list(nhdict.values()), zorder=3)
+
+    fontsize = 14
+    ax.set_xlabel("Number of non-hydrogen atoms in molecule",fontsize=fontsize)
+    # set ylabel with the actual T value
+    ax.set_ylabel(f"Number of molecules", fontsize=fontsize)
+    
+    # set border linewidth
+    [x.set_linewidth(1.5) for x in ax.spines.values()]
+
+    # set the size of the ticklabel to fontsize 
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    ax.xaxis.set_tick_params(width=2, length=5)
+    # and yaxis
+    ax.yaxis.set_tick_params(width=2, length=5)
+
+    ax.set_title("Distribution of non-hydrogen atom counts",fontsize=fontsize, fontweight="bold")
+
+    plt.tight_layout()
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/nonhydrogen_distribution_dataset.png"
+    plt.savefig(filename)
+
+def make_covariance_matrix_plot():
+    # load dataset
+    input_filepath = "data/processed/"
+    filename = "docked_mols.csv"
+    path = f"{input_filepath}/{filename}"
+
+    df = pd.read_csv(path)
+
+    columns = df.columns
+    
+    # the remaining columns contains lists of numbers
+    # they are in string form however in the native dataframe
+    # should be converted to list type 
+    for name in columns[2:]:
+        df.loc[:,name] = df[name].apply(json.loads)
+
+    dockscore = np.array(df.dockscore, dtype=np.float64)
+    
+    # compute all rewards from data and normalize
+    rewards = 4 - (dockscore - (-8.6)) / 1.1
+    normalized_rewards = (rewards - np.mean(rewards)) / np.std(rewards)
+    
+    # compute blocksizes and normalize
+    blocksizes = np.array([len(bidx) for bidx in df.blockidxs])
+    normalized_blocksizes = (blocksizes - np.mean(blocksizes)) / np.std(blocksizes)
+
+    # compute number of non hydrogen atoms and normalize
+    atomsizes = np.array([s[-1] for s in df.slices])
+    normalized_atomsizes = (atomsizes - np.mean(atomsizes)) / np.std(atomsizes)
+
+    cov = np.cov([normalized_rewards,normalized_blocksizes,normalized_atomsizes])
+
+    fig, ax = plt.subplots(figsize=(6.4*1.1,4.8*1.1))
+
+    fontsize = 14
+
+    ax = sns.heatmap(cov, annot=True, fmt=".2f", annot_kws={"size": fontsize})
+
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=fontsize)
+
+    pos = [0.5,1.5,2.5]
+    labels = ["Rewards","Number of blocks", "Number of atoms"]
+
+    ax.set_xticks(pos,labels,rotation=45)
+    ax.set_yticks(pos,labels,rotation=0)
+    
+    # set border linewidth
+    [x.set_linewidth(1.5) for x in ax.spines.values()]
+
+    # set the size of the ticklabel to fontsize 
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    ax.xaxis.set_tick_params(width=2, length=5)
+    # and yaxis
+    ax.yaxis.set_tick_params(width=2, length=5)
+
+    ax.set_title("Covariance matrix for variables",fontsize=fontsize, fontweight="bold")
+
+    plt.subplots_adjust(left=0.25, bottom=0.25)
+
+    plt.tight_layout()    
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/covmatrix_dataset.png"
+    plt.savefig(filename)
+
+def make_diverse_bemis_murcko_plot(T, experiment_id):
+    # get rewards and smiles for experiment 
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    smiles = []
+    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    rewards = np.array(rewards)
+    smiles = np.array(smiles)
+    unique_scaffold = defaultdict(lambda: True)
+    is_bemis_murcko = np.zeros(len(rewards))
+    convert_indices = np.arange(len(rewards))[rewards>T]
+    smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
+    print(f"Number of unique smiles: {len(smiles)}")
+    start_time = time.time() # get start time
+    elapsed_time = 0
+    for i, (smi, smi_idx) in enumerate(zip(smiles,smiles_idx)):
+        bemis_murcko = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(smi)))
+        if unique_scaffold[bemis_murcko]:
+            unique_scaffold[bemis_murcko] = False
+            is_bemis_murcko[convert_indices[smi_idx]] = 1
+        if i % 100 == 0:
+            end_time = time.time() # get end time
+            elapsed_time += end_time - start_time # calculate elapsed time
+            print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
+            start_time = end_time
+
+    # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
+    plt.plot(np.arange(len(is_bemis_murcko))+1,np.cumsum(is_bemis_murcko))
+    plt.xlabel("states visited")
+    # set ylabel with the actual T value
+    plt.ylabel(f"# of modes with R > {T}")
+    plt.grid()
+
+    plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6])
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+    
+
+    figures_path = f"reports/figures/{experiment_id}"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/diverse_bemis_murcko_plot_{T}.png"
     plt.savefig(filename)
 
 
@@ -874,66 +1250,6 @@ def make_reward_threshold_plot(thresholds, experiment_id):
     filename = f"{figures_path}/reward_threshold_plot_{file_id}.png"
     plt.savefig(filename)
     
-    
-
-    
-
-
-
-
-if __name__ == "__main__":
-    experiment_id = "experiment_1"
-    # path to rewards file
-    rewards_path = f'results/{experiment_id}'
-    trajs = []
-    with gzip.open(f"{rewards_path}/trajectories.pkl.gz") as fr:
-        try:
-            while True:
-                trajs.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    trajs = trajs
-    begin_time = time.time()
-    smiles = []
-    tl = {key: 0 for key in range(2,9)}
-    count = np.zeros(len(trajs)+1)
-    for i, traj in enumerate(trajs):
-        """ if i % 100 == 0:
-            print(i)
-        mol = BlockMolecule()
-        for (bi, si) in traj:
-            mol.add_block(bi,si)
-        smiles.append(mol.get_smiles())
-        if smiles[-1] == "CC(O)C1CCCC1":
-            print(traj) """
-        tl[len(traj)] += 1
-        count[i+1] = traj[-1][0] == -1
+        
     
     
-    print(np.cumsum(count))
-    plt.plot(np.arange(len(count)),np.cumsum(count))
-    plt.show()
-    
-    print("Blocksize for generated molecules:", tl)
-    
-    #print(time.time()-begin_time)
-    """ d = {key: 0 for key in np.unique(smiles)}
-    
-    for i in range(len(smiles)):
-        d[smiles[i]] += 1
-    
-    tuples = [(d[key],key) for key in np.unique(smiles)]
-    tuples.sort()
-    sorted = list(reversed(tuples))
-    #print(sorted) """
-
-    smiles = []
-    with gzip.open(f"{rewards_path}/smiles.pkl.gz") as fr:
-        try:
-            while True:
-                smiles.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    print(len(np.unique(smiles[:4000])))

@@ -14,47 +14,25 @@ import pandas as pd
 from collections import defaultdict
 
 if __name__ == "__main__":
-    #make_empirical_density_plot()
-
     # experiment_id
-    """ experiment_id = "experiment_1"
+    experiment_id = "experiment_1"
+    experiment_ids = ["experiment_1","experiment_4","experiment_5"]
 
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    print(np.max(rewards[:52000]),np.mean(rewards[:52000]))
-
-    experiment_id = "experiment_4"
-
-    rewards = []
-    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-    print(np.max(rewards),np.mean(rewards))
-    """
-    
-    get_number_of_diverse_bemis_murcko(7.5, "experiment_1")
-    get_number_of_diverse_bemis_murcko(7.5, "experiment_4")
-    get_number_of_diverse_bemis_murcko(7.5, "experiment_5")
-
-    #make_leaf_flow_loss_plot(experiment_id)
-
-
-    #make_empirical_density_inflow_reward_plot(experiment_id)
+    #make_top_k_plot([10,100,1000], experiment_ids)
     #make_empirical_density_plot()
+    #make_bemis_murcko_avg_plot(7.5)
 
-    #make_scatter_inflow_reward_plot(experiment_id)
+    #make_bemis_murcko_avg_plot()
+    #make_leaf_flow_loss_plot(experiment_id)
+    #make_empirical_density_inflow_reward_plot(experiment_id)
 
-    make_blocksize_bar_plot(6,["experiment_1","experiment_4","experiment_5"])
-    make_blocksize_bar_plot(7,["experiment_1","experiment_4","experiment_5"])
-    make_blocksize_bar_plot(7.5,["experiment_1","experiment_4","experiment_5"])
-    
+    #make_tanimoto_plot(experiment_ids,7,default=True)
+    #make_tanimoto_plot(experiment_ids,7)
+    #make_total_unique_molecules_plot(experiment_ids,7)
+
+    #thresholds = [5,6,7,7.5]
+    #make_blocksize_bar_plot(thresholds,experiment_ids)
+
+    #make_blocksize_distribution_plot()
+    #make_nonhydrogen_distribution_plot()
+    #make_covariance_matrix_plot()
