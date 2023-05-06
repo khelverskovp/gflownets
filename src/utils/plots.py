@@ -61,9 +61,12 @@ def make_empirical_density_plot():
 
     fig, ax = plt.subplots(figsize=(6.6, 4.1))
 
+    nbins = 40
+    bins = np.linspace(0,9,nbins)
+
     # plot empirical density for each beta
     for i, rewards in enumerate([rewards_beta1, rewards_beta4, rewards_beta10, df_rewards]):
-        pdf, bins = np.histogram(rewards, density=False, bins=40)
+        pdf, bins = np.histogram(rewards, density=False, bins=bins)
         pdf = pdf / np.sum(pdf)
         ax.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
         
@@ -189,7 +192,7 @@ def make_top_k_plot(k_values, experiment_ids):
 
 
 # Figure 14
-def make_tanimoto_plot(experiment_id, T):
+def make_tanimoto_plot(experiment_ids, T):
     # get tanimoto counts for experiment
     tanimoto_counts = None
     with gzip.open(f"results/{experiment_id}/tanimoto_counts_{T}.pkl.gz") as fr:
@@ -352,10 +355,10 @@ def make_scatter_inflow_reward_plot(experiment_id):
     ax.plot(x,y,"k", label = r"$x=y$", linewidth=2)
 
     # make logarithmic fit
-    a,r = np.polyfit(np.log(rewards), np.log(inflows), 1)
+    a, b, r_value, p_value, std_err = stats.linregress(np.log(rewards), np.log(inflows))
     x = np.linspace(1e-4,1,10000)
-    y = np.exp(r + a*np.log(x))
-    l = "log-log linear regression\n"+r"$a=$"+f"{round(a,2)}" + " " + r"$r=$"+f"{round(r,2)}"
+    y = np.exp(b + a*np.log(x))
+    l = "log-log linear regression\n"+r"$a=$"+f"{round(a,2)}" + " " + r"$r=$"+f"{round(r_value,2)}"
     ax.plot(x,y,"orange",label=l, linewidth=2)
 
     fontsize = 12
@@ -436,12 +439,9 @@ def make_empirical_density_inflow_reward_plot(experiment_id):
     
     fig, ax1 = plt.subplots(figsize=(6.75,4.1))
     ax2 = ax1.twinx()
-    
-    nbins = [340,340]
+    logbins = np.logspace(-6,0.3,140)
     # plot empirical density for each beta
-    for i, (vals, n) in enumerate(zip([rewards / outflows,inflows / outflows],nbins)):
-        _, bins = np.histogram(vals, bins=n)
-        logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+    for i, vals in enumerate(zip([rewards / outflows,inflows / outflows])):
         pdf, bins = np.histogram(vals, density=False, bins=logbins)
         pdf = pdf / np.sum(pdf)
         
@@ -455,8 +455,8 @@ def make_empirical_density_inflow_reward_plot(experiment_id):
     ax2.set_ylabel("empirical frequency of " + r'$\hat{R}(x)/Z$')
     plt.xscale("log")
     
-    plt.xticks([1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1])
-    plt.xlim(1e-8,3e-1)
+    plt.xticks([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1])
+    plt.xlim(1e-6,3e-1)
     ax1.set_ylim(0,0.045)
     ax2.set_ylim(0,0.045)
     ax1.set_yticks([0,0.01,0.02,0.03,0.04])
@@ -565,13 +565,138 @@ def make_leaf_flow_loss_plot(experiment_id):
 
 
 
-
-
-
-
-
-
 # Extra plot
+# taken from https://stackoverflow.com/questions/14270391/how-to-plot-multiple-bars-grouped
+def bar_plot(ax, data, xticks, colors=None, total_width=0.8, single_width=1, legend=True):
+    """Draws a bar plot with multiple bars per data point.
+
+    Parameters
+    ----------
+    ax : matplotlib.pyplot.axis
+        The axis we want to draw our plot on.
+
+    data: dictionary
+        A dictionary containing the data we want to plot. Keys are the names of the
+        data, the items is a list of the values.
+
+        Example:
+        data = {
+            "x":[1,2,3],
+            "y":[1,2,3],
+            "z":[1,2,3],
+        }
+
+    colors : array-like, optional
+        A list of colors which are used for the bars. If None, the colors
+        will be the standard matplotlib color cyle. (default: None)
+
+    total_width : float, optional, default: 0.8
+        The width of a bar group. 0.8 means that 80% of the x-axis is covered
+        by bars and 20% will be spaces between the bars.
+
+    single_width: float, optional, default: 1
+        The relative width of a single bar within a group. 1 means the bars
+        will touch eachother within a group, values less than 1 will make
+        these bars thinner.
+
+    legend: bool, optional, default: True
+        If this is set to true, a legend will be added to the axis.
+    """
+
+    # Check if colors where provided, otherwhise use the default color cycle
+    if colors is None:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # Number of bars per group
+    n_bars = len(data)
+
+    # The width of a single bar
+    bar_width = total_width / n_bars
+
+    # List containing handles for the drawn bars, used for the legend
+    bars = []
+
+    # Iterate over all data
+    for i, (name, values) in enumerate(data.items()):
+        # The offset in x direction of that bar
+        x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
+
+        # Draw a bar for every value of that type
+        for x, y in zip(xticks,values):
+            bar = ax.bar(x + x_offset, y, width=bar_width * single_width, color=colors[i % len(colors)])
+
+        # Add a handle to the last drawn bar, which we'll need for the legend
+        bars.append(bar[0])
+
+    # Draw legend if we need
+    if legend:
+        ax.legend(bars, data.keys())
+    
+    plt.xticks(xticks)
+
+
+def make_blocksize_bar_plot(T, experiment_ids):
+    # min blocks is 2
+    offset = 2
+    data = {
+        "stop": [0 for i in range(2,9)],
+        "nostop": [0 for i in range(2,9)],
+    }
+
+    for eid in experiment_ids:
+        trajectories = []
+        with gzip.open(f"results/{eid}/trajectories.pkl.gz") as fr:
+            try:
+                while True:
+                    trajectories.extend(pickle.load(fr))
+            except EOFError:
+                pass
+        
+        smiles = []
+        with gzip.open(f"results/{eid}/smiles.pkl.gz") as fr:
+            try:
+                while True:
+                    smiles.extend(pickle.load(fr))
+            except EOFError:
+                pass
+
+        rewards = []
+        with gzip.open(f"results/{eid}/rewards.pkl.gz") as fr:
+            try:
+                while True:
+                    rewards.extend(pickle.load(fr))
+            except EOFError:
+                pass
+        
+        rewards = np.array(rewards)
+        smiles = np.array(smiles)
+
+        smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
+
+        for idx in smiles_idx:
+            if trajectories[idx][-1][0] == -1:
+                data["stop"][len(trajectories[idx])-1-offset] += 1
+            else:
+                data["nostop"][len(trajectories[idx])-offset] += 1
+    
+    for i in range(2,9):
+        data["stop"][i-offset] /= len(experiment_ids)
+        data["nostop"][i-offset] /= len(experiment_ids)
+    print("DONE")
+    fig, ax = plt.subplots()
+    bar_plot(ax, data, range(2,9), colors=["red","blue"], total_width=.8, single_width=.9)
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path,exist_ok=True)
+
+
+    filename = f"{figures_path}/blocksize_histogram_{T}.png"
+    plt.savefig(filename)
+
+
+
+
+
 # Rewards plot med moving average (done)
 def make_rewards_plot(experiment_id):
     rewards = []

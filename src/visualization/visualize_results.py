@@ -41,17 +41,27 @@ if __name__ == "__main__":
     
     print(np.max(rewards),np.mean(rewards))
     """
-    experiment_id = "experiment_2"
+    experiment_id = "experiment_1"
 
-    experiment_id = "experiment_2"
+    #experiment_id = "experiment_2"
     #k_values = [10,100,1000]
     #make_top_k_plot(k_values, experiment_id)
 
     #make_empirical_density_plot()
     #make_leaf_flow_loss_plot(experiment_id)
 
-    make_diverse_bemis_murcko_plot(7.5, experiment_id)
-    make_diverse_bemis_murcko_plot(8, experiment_id)
+    #make_diverse_bemis_murcko_plot(7.5, experiment_id)
+    #make_diverse_bemis_murcko_plot(8, experiment_id)
 
     #make_leaf_flow_loss_plot(experiment_id)
 
+
+    #make_empirical_density_inflow_reward_plot(experiment_id)
+    #make_empirical_density_plot()
+
+    #make_scatter_inflow_reward_plot(experiment_id)
+
+    make_blocksize_bar_plot(6,["experiment_1","experiment_4","experiment_5"])
+    make_blocksize_bar_plot(7,["experiment_1","experiment_4","experiment_5"])
+    make_blocksize_bar_plot(7.5,["experiment_1","experiment_4","experiment_5"])
+    
