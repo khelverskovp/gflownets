@@ -80,18 +80,6 @@ def compute_tanimoto_counts(T, S, experiment_id):
     # make sure we look at smiles in correct order
     smiles_idx = np.sort(idx)
     smiles = smiles[smiles_idx]
-<<<<<<< HEAD
-=======
-    
-    # compute all fingerprints
-    for smi in smiles:
-        if fingerprint_type == "rdk":
-            fingerprints[smi] = Chem.RDKFingerprint(Chem.MolFromSmiles(smi))
-        elif fingerprint_type == "morgan":
-            fingerprints[smi] = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smi), 3, nBits=2048)
-        elif fingerprint_type == "bengio":
-            fingerprints[smi] = Chem.RDKFingerprint(Chem.MolFromSmiles(smi))
->>>>>>> ab8998a81bf6b767b4865b76e265d3fcdc1f0180
 
     logger = logging.getLogger(__name__)
 
@@ -150,6 +138,4 @@ if __name__ == "__main__":
 
     T = 7
     S = 0.7
-    compute_tanimoto_counts(T, S, "rdk", experiment_id)
-    compute_tanimoto_counts(T,S, "rdk","experiment_4")
-    compute_tanimoto_counts(T,S,"rdk", "experiment_5")
+    compute_tanimoto_counts(T, S, experiment_id)
