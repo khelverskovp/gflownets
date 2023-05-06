@@ -1,0 +1,4 @@
+# config file for default wandb parameters
+params:
+  entity: "gflownets"
+  project: "molecule-experiments"
