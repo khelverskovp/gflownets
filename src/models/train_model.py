@@ -32,7 +32,8 @@ def main(cfg):
         Train model
     """
     logger = logging.getLogger(__name__)
-    logger.info('train model')
+    logger.info('Beginning training process of GFlowNet')
+    logger.info('Printing epoch number every 100th iteration')
 
     # retrieve the values from the config files
     cfg_wandb = cfg.wandb.params
@@ -42,7 +43,7 @@ def main(cfg):
     total_epochs = cfg_exp.hp.total_epochs
     mbsize = cfg_exp.hp.mbsize
 
-    device = torch.device(cfg_exp.hp.device)
+    device = torch.device(cfg_exp.hp.device if torch.cuda.is_available() else "cpu")
 
     min_blocks = cfg_exp.hp.min_blocks
     max_blocks = cfg_exp.hp.max_blocks
@@ -211,7 +212,6 @@ def main(cfg):
                 
                 # check if we choose to stop
                 if action == 0 and t >= min_blocks:
-                    #print("a")
                     # compute reward from proxy
                     reward_true = proxy([mol])
                     # match reward to specific molecule
@@ -251,7 +251,6 @@ def main(cfg):
 
                     # check if we are forced to stop
                     if len(mol.blockidxs) > 0 and (len(mol.stems) == 0 or t == max_blocks-1):
-                        #print("b")
                         # compute reward from proxy
                         reward_true = proxy([mol])
                         # match reward to specific molecule
@@ -287,7 +286,6 @@ def main(cfg):
                         # state that we are done
                         terminal_state = True
                     else:
-                        #print("c")
                         # reward is 0 for internal states
                         reward = 0
 

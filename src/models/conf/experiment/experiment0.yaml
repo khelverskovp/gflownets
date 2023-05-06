@@ -1,0 +1,23 @@
+# config file for experiment 0
+# choose here which parameters you want to run the model with
+# hyperparameters
+hp:
+  total_epochs: 5
+  min_blocks: 2
+  max_blocks: 8
+  device: "cpu"
+  run_name: "experiment_0"
+  lr: 5e-4
+  mbsize: 4
+  beta1_adam: 0.9
+  beta2_adam: 0.999
+  epsilon_adam: 1e-8
+  nemb: 256 # number of elements for embeddings
+  num_conv_steps: 10
+  epsilon_loss: 2.5e-5
+  reward_T: 8
+  reward_beta: 10
+  random_action_prob: 0.05
+  lambda_T: 10
+  R_min: 0.01
+  save_freq: 5 # determines how often the model should be saved 
