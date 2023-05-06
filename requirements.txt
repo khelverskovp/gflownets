@@ -11,12 +11,15 @@ hydra-core
 h5py
 pandas
 numpy
+matplotlib
 rdkit-pypi
 scipy
 torch
 torch-scatter
 torch-sparse
 torch-geometric
+
+
 
 # you must install pytables with conda
 
