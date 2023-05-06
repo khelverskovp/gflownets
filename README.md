@@ -5,7 +5,6 @@ Codebase for Bachelor Project about Generative Flow Networks (GFlowNets)
 Implementation of GFlowNet for our Bachelor Project at DTU. Our code is inspired by the implementation in [GFNOrg/gflownet](GFNOrg/gflownet) by [@bengioe](https://github.com/bengioe), [@MJ10](https://github.com/MJ10) and [@MKorablyov](https://github.com/MKorablyov) for the initial [paper](https://arxiv.org/abs/2106.04399) about GFlowNets.
 
 ## Molecule Experiments
------------
 For the experiments we used Python 3.10.2 and CUDA 11.6. If you have CUDA 11.6 configured, you can run pip install -r requirements.txt. You can also change requirements.txt to match your CUDA version. (Replace cu116 to cuXXX, where XXX is your CUDA version).
 
 The compressed dataset consisting of 300k molecules can be found in `data/raw`.
