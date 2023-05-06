@@ -8,7 +8,7 @@ Implementation of GFlowNet for our Bachelor Project at DTU. Our code is inspired
 -----------
 For the experiments we used Python 3.10.2 and CUDA 11.6. If you have CUDA 11.6 configured, you can run pip install -r requirements.txt. You can also change requirements.txt to match your CUDA version. (Replace cu116 to cuXXX, where XXX is your CUDA version).
 
-The compressed dataset consisting of 300k molecules can be found in 'data/raw'
+The compressed dataset consisting of 300k molecules can be found in `data/raw`
 
 ## Project Organization
 ------------
