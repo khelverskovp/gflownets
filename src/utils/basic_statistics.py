@@ -85,21 +85,25 @@ def top_k(rewards1, rewards2, rewards3, k):
     return mean, std
 
 # for each rewards_exp1, rewards_exp4, rewards_exp5, get the number of rewards above 8
-def get_number_rewards_above_8(rewards):
-    rewards_above_8 = []
+def get_number_rewards_above_T(rewards, T):
+    rewards_above_T = []
     for i in range(len(rewards)):
-        if rewards[i] >= 8:
-            # check if the reward is in the proxy dataset
-            if rewards[i] not in df_rewards:
-                rewards_above_8.append(rewards[i])
-    return rewards_above_8
+        if rewards[i] > T:
+            rewards_above_T.append(rewards[i])
+    return rewards_above_T
 
-rewards_exp1_above_8 = get_number_rewards_above_8(rewards_exp1)
-rewards_exp4_above_8 = get_number_rewards_above_8(rewards_exp4)
-rewards_exp5_above_8 = get_number_rewards_above_8(rewards_exp5)
+# get the number of rewards above 7.5 for each experiment
+rewards_exp1_1_above_75 = get_number_rewards_above_T(rewards_exp1, 7.5)
+rewards_exp4_1_above_75 = get_number_rewards_above_T(rewards_exp4, 7.5)
+rewards_exp5_1_above_75 = get_number_rewards_above_T(rewards_exp5, 7.5)
 
-# print the length of each with a message 
-print(f"Number of rewards above 8 for experiment 1: {len(rewards_exp1_above_8)}")
-print(f"Number of rewards above 8 for experiment 4: {len(rewards_exp4_above_8)}")
-print(f"Number of rewards above 8 for experiment 5: {len(rewards_exp5_above_8)}")
+# print with a message 
+print(f"Number of rewards above 7.5 for experiment 1: {len(rewards_exp1_1_above_75)}")
+print(f"Number of rewards above 7.5 for experiment 4: {len(rewards_exp4_1_above_75)}")
+print(f"Number of rewards above 7.5 for experiment 5: {len(rewards_exp5_1_above_75)}")
+
+# print the average of the three 
+print(f"Average of the three experiments: {np.mean([len(rewards_exp1_1_above_75), len(rewards_exp4_1_above_75), len(rewards_exp5_1_above_75)])}")
+
+
 

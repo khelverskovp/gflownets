@@ -20,7 +20,6 @@ def make_empirical_density_plot():
     # get rewards for experiment for each beta
     rewards_beta1 = []
     rewards_beta4 = []
-    rewards_beta10 = []
 
     with gzip.open(f"results/experiment_2/rewards.pkl.gz") as fr:
         try:
@@ -35,151 +34,104 @@ def make_empirical_density_plot():
         except EOFError:
             pass
 
-    with gzip.open(f"results/experiment_1/rewards.pkl.gz") as fr:
-        try:
-            while True:
-                rewards_beta10.extend(pickle.load(fr))
-        except EOFError:
-            pass
-    
-
     # change to numpy array
     rewards_beta1 = np.array(rewards_beta1)
     rewards_beta4 = np.array(rewards_beta4)
-    rewards_beta10 = np.array(rewards_beta10)
 
     # get rewards for proxy dataset data/processed/rewards_proxy_dataset.pkl.gz
     df_rewards = pd.read_pickle("data/processed/rewards_proxy_dataset.pkl.gz")
-    
     # change to numpy array
     df_rewards = np.array(df_rewards)
 
-    linestyles = ['--', '-', ':', '-']
-    colors = ['blue', 'blue', 'blue', 'black']
-    #legends = [r'$\hat{p}(R | \beta=1)$', r'$\hat{p}(R | \beta=4)$', r'$\hat{p}(R | \beta=10)$', r'$\hat{p}(R | \mathrm{proxy\ dataset})$']
-    legends = [r'ours, $\beta=1$',r'ours, $\beta=4$',r'ours, $\beta=10$',"proxy dataset"]
+    linestyles = [':', '-', '-']
+    colors = ['blue', 'blue', 'black']
+    legends = [r'$\hat{p}(R | \beta=1)$', r'$\hat{p}(R | \beta=4)$', r'$\hat{p}(R | \mathrm{proxy\ dataset})$']
 
-    fig, ax = plt.subplots(figsize=(6.6, 4.1))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
     # plot empirical density for each beta
-    for i, rewards in enumerate([rewards_beta1, rewards_beta4, rewards_beta10, df_rewards]):
+    for i, rewards in enumerate([rewards_beta1, rewards_beta4, df_rewards]):
         pdf, bins = np.histogram(rewards, density=False, bins=40)
         pdf = pdf / np.sum(pdf)
         ax.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
         
 
     ax.grid()
-    ax.set_xlim(0,9)
+    ax.set_xlim(left=0)
     ax.set_ylim(bottom=0.00)
 
-    fontsize = 16
-    ax.set_xlabel(r'$R(x)$',fontsize=fontsize)
-    ax.set_ylabel(r'$\hat{p}(R)$',fontsize=fontsize)
+    ax.set_xlabel(r'$R(x)$')
     ax.set_xticks(np.arange(0, 9, 2))
-    ax.set_yticks([0.0,0.02,0.04,0.06,0.08])
-    ax.tick_params(axis='x', labelsize=fontsize)
-    ax.tick_params(axis='y', labelsize=fontsize)
-    ax.legend(loc="upper right",fontsize=fontsize-2)
-
-    [x.set_linewidth(1.5) for x in ax.spines.values()]
-    ax.xaxis.set_tick_params(width=2,length=5)
-    ax.yaxis.set_tick_params(width=2,length=5)
-
-    plt.tight_layout()
+    ax.set_ylabel(r'$\hat{p}(R)$')
+    ax.legend()
 
     figures_path = f"reports/figures"
     os.makedirs(figures_path, exist_ok=True)
-    
+
     # save file
     filename = f"{figures_path}/empirical_density_plot.png"
     plt.savefig(filename)
 
 
 # Figure 4
-def make_top_k_plot(k_values, experiment_ids):
+def make_top_k_plot(k_values, experiment_id):
     # only allow for 3 thresholds
     assert len(k_values) == 3, "Please give 3 thresholds for plot to work!"
+    plt.figure()
+    # path to rewards file is experiment_id/unique_rewards.pkl.gz
+    path = f'results/{experiment_id}'
 
-    top_k_avg_runs = [[] for _ in range(len(experiment_ids))]
+    # store rewards in list
+    rewards = []
 
-    for i, eid in enumerate(experiment_ids):
-        # path to rewards file is experiment_id/unique_rewards.pkl.gz    
-        path = f'results/{eid}'
-        rewards = []
-        with gzip.open(f"{path}/rewards.pkl.gz") as fr:
-            try:
-                while True:
-                    rewards.extend(pickle.load(fr))
-            except EOFError:
-                pass
+    with gzip.open(f"{path}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
     
-        # store smiles in a list 
-        smiles = []
-        with gzip.open(f"{path}/smiles.pkl.gz") as fr:
-            try:
-                while True:
-                    smiles.extend(pickle.load(fr))
-            except EOFError:
-                pass
+    # store smiles in a list 
+    smiles = []
+    with gzip.open(f"{path}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
     
-        is_sampled = defaultdict(lambda:False)
+    is_sampled = defaultdict(lambda:False)
 
-        # change to numpy array
-        rewards = np.array(rewards)
-        
-
-        for j, k in enumerate(k_values):
-            print(i,j)
-            top_k = np.sort(rewards[:k])
-
-            top_k_avg = [np.mean(top_k)]
-
-            for l in range(k+1,len(rewards)):
-                if rewards[l] > top_k[0] and not is_sampled[smiles[l]]:
-                    top_k[0] = rewards[l]
-                    is_sampled[smiles[l]] = True
-                top_k_avg.append(np.mean(top_k))
-                top_k = np.sort(top_k)
-            
-            top_k_avg_runs[j].append(np.array(top_k_avg))
-
+    # change to numpy array
+    rewards = np.array(rewards)
     linestyles = [':','--','-']
     legends = ["top 10", "top 100", "top 1000"]
 
-    fig, ax = plt.subplots(figsize=(7.06, 4.1))
+    for k, ls, lg in zip(k_values, linestyles, legends):
+        top_k = np.sort(rewards[:k])
 
-    for i, (k, ls, lg) in enumerate(zip(k_values,linestyles, legends)):
+        top_k_avg = [np.mean(top_k)]
+
+        for i in range(k+1,len(rewards)):
+            if rewards[i] > top_k[0] and not is_sampled[smiles[i]]:
+                top_k[0] = rewards[i]
+                is_sampled[smiles[i]] = True
+            top_k_avg.append(np.mean(top_k))
+            top_k = np.sort(top_k)
+
         top_k_rids = np.arange(k,len(rewards))
-        # take mean over three runs
-        top_k_avg = np.zeros(len(top_k_avg_runs[i][0]))
+        plt.semilogx(top_k_rids, top_k_avg, ls, label=lg)
         
-        for tk in top_k_avg_runs[i]:
-            top_k_avg += tk
-        top_k_avg /= len(top_k_avg_runs[i])
-        ax.semilogx(top_k_rids, top_k_avg, ls, color="blue",label=lg)
-        
-    fontsize = 16
-    plt.xlim(1e1,1e6)
     plt.ylim(2,8.5)
-    plt.xticks([1e1,1e2,1e3,1e4,1e5,1e6])
     plt.yticks([2,4,6,8])
-    ax.tick_params(axis='x', labelsize=fontsize)
-    ax.tick_params(axis='y', labelsize=fontsize)
     plt.minorticks_off()
     plt.grid()
-    plt.xlabel("molecules visited", fontsize=fontsize)
-    plt.ylabel("avg " + r"$R$" + " of unique top " + r"$k$", fontsize=fontsize)
+    plt.xlabel("molecules visited")
+    plt.ylabel("avg " + r"$R$" + " of unique top " + r"$k$")
 
-    plt.legend(fontsize=fontsize-2)
-
-    [x.set_linewidth(1.5) for x in ax.spines.values()]
-    ax.xaxis.set_tick_params(width=2,length=5)
-    ax.yaxis.set_tick_params(width=2,length=5)
-
-    plt.tight_layout()
-
+    plt.legend()
     file_id = len(rewards)
-    figures_path = f"reports/figures/{experiment_ids[0]}"
+    figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path,exist_ok=True)
     
     # save file
@@ -189,10 +141,10 @@ def make_top_k_plot(k_values, experiment_ids):
 
 
 # Figure 14
-def make_tanimoto_plot(experiment_id, T):
+def make_tanimoto_plot(experiment_id):
     # get tanimoto counts for experiment
     tanimoto_counts = None
-    with gzip.open(f"results/{experiment_id}/tanimoto_counts_{T}.pkl.gz") as fr:
+    with gzip.open(f"results/{experiment_id}/tanimoto_counts.pkl.gz") as fr:
         try:
             while True:
                 data = pickle.load(fr)
@@ -219,9 +171,50 @@ def make_tanimoto_plot(experiment_id, T):
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    filename = f"{figures_path}/diverse_tanimoto_plot_{int(len(tanimoto_counts))}_{T}.png"
+    filename = f"{figures_path}/diverse_tanimoto_plot_{int(len(tanimoto_counts))}_{S}.png"
     plt.savefig(filename)
+
+def get_number_of_diverse_bemis_murcko(T,experiment_id):
+    # get rewards and smiles for experiment 
+    rewards = []
+    with gzip.open(f"results/{experiment_id}/rewards.pkl.gz") as fr:
+        try:
+            while True:
+                rewards.extend(pickle.load(fr))
+        except EOFError:
+            pass
     
+    smiles = []
+    with gzip.open(f"results/{experiment_id}/smiles.pkl.gz") as fr:
+        try:
+            while True:
+                smiles.extend(pickle.load(fr))
+        except EOFError:
+            pass
+    
+    rewards = np.array(rewards)
+    smiles = np.array(smiles)
+    unique_scaffold = defaultdict(lambda: True)
+    is_bemis_murcko = np.zeros(len(rewards))
+    convert_indices = np.arange(len(rewards))[rewards>T]
+    smiles, smiles_idx = np.unique(smiles[rewards>T],return_index=True)
+    print(f"Number of unique smiles: {len(smiles)}")
+    start_time = time.time() # get start time
+    elapsed_time = 0
+    for i, (smi, smi_idx) in enumerate(zip(smiles,smiles_idx)):
+        bemis_murcko = Chem.MolToSmiles(MurckoScaffold.GetScaffoldForMol(Chem.MolFromSmiles(smi)))
+        if unique_scaffold[bemis_murcko]:
+            unique_scaffold[bemis_murcko] = False
+            is_bemis_murcko[convert_indices[smi_idx]] = 1
+        if i % 100 == 0:
+            end_time = time.time() # get end time
+            elapsed_time += end_time - start_time # calculate elapsed time
+            print("Iteration ", i, " elapsed time: ", elapsed_time, " seconds")
+            start_time = end_time
+    
+    print(f"Number of diverse Bemis-Murcko scaffolds: {np.sum(is_bemis_murcko)}")
+        
+    return is_bemis_murcko
 
 
 def make_diverse_bemis_murcko_plot(T, experiment_id):
@@ -277,7 +270,67 @@ def make_diverse_bemis_murcko_plot(T, experiment_id):
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
-    filename = f"{figures_path}/diverse_bemis_murcko_plot_{int(len(rewards) / 4)}_{T}.png"
+    filename = f"{figures_path}/diverse_bemis_murcko_plot_{T}.png"
+    plt.savefig(filename)
+
+
+def make_bemis_murcko_avg_plot(T):
+    is_bemis_murcko1 = get_number_of_diverse_bemis_murcko(T, "experiment_1")
+    is_bemis_murcko4 = get_number_of_diverse_bemis_murcko(T, "experiment_4")
+    is_bemis_murcko5 = get_number_of_diverse_bemis_murcko(T, "experiment_5")
+
+    fontsize = 16
+
+    # set the figure size 
+    plt.figure(figsize=(6.6,4.4))
+
+
+    # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
+    plt.plot(np.arange(len(is_bemis_murcko1))+1,np.cumsum(is_bemis_murcko1 + is_bemis_murcko4 + is_bemis_murcko5)/3)
+    plt.xlabel("states visited" , fontsize=fontsize)
+    # set ylabel with the actual T value
+    plt.ylabel(f"# of modes with R > {T}" , fontsize=fontsize)
+    plt.grid()
+
+    # use get_offset_text().set_fontsize(fontsize)
+    plt.gca().get_xaxis().get_offset_text().set_fontsize(fontsize)
+    
+    # print the average final cumsum value 
+    print(f"Average final cumsum value: {np.cumsum(is_bemis_murcko1 + is_bemis_murcko4 + is_bemis_murcko5)[-1]/3}")
+
+    # make the y-axis go from 0 til 10.000
+    
+    plt.xlim(0, 1.0*10**6)
+
+    # set the fontsize for the y-axis
+    plt.yticks(fontsize=fontsize)
+
+    plt.xticks([0, 0.2*10**6, 0.4*10**6, 0.6*10**6, 0.8*10**6, 1.0*10**6], fontsize=fontsize)
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0), useMathText=True)
+
+    # set the size of the ticklael to fontsize 
+    plt.tick_params(axis='both', labelsize=fontsize)
+
+    # set the size of x.set_linewdtith to 1.5
+    # set the size of spines to 1.5 for all spines
+    plt.gca().spines['bottom'].set_linewidth(1.5)
+    plt.gca().spines['top'].set_linewidth(1.5)
+    plt.gca().spines['left'].set_linewidth(1.5)
+    plt.gca().spines['right'].set_linewidth(1.5)
+
+    #set xaxis set_tick_parsm width=2 length=5
+    plt.gca().xaxis.set_tick_params(width=2, length=5)
+    # and yaxis
+    plt.gca().yaxis.set_tick_params(width=2, length=5)
+    
+    
+    plt.tight_layout()
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
+
+    # save file
+    filename = f"{figures_path}/diverse_bemis_murcko_plot_{T}.png"
     plt.savefig(filename)
 
 
@@ -317,10 +370,8 @@ def make_scatter_inflow_reward_plot(experiment_id):
     rewards = (np.clip(rewards, R_min, np.max(rewards)) / reward_T)**reward_beta
     inflows = np.array(inflows)[-5000:]
 
-    fig, ax = plt.subplots(figsize=(6.97, 4.1))
-
     # make scatter plot
-    ax.scatter(rewards,inflows, s=7, alpha=0.3)
+    plt.scatter(rewards,inflows, s=7, alpha=0.3)
 
     # make bin average
     steps = []
@@ -344,27 +395,24 @@ def make_scatter_inflow_reward_plot(experiment_id):
                 continue
             bin_avg.append(np.mean(ifl))
 
-    ax.plot(steps,bin_avg, "purple",label="bin average", linewidth=2)
+    plt.plot(steps,bin_avg, "purple",label="bin average")
 
     # plot x = y
     x = np.linspace(1e-4,1,10000)
     y = x
-    ax.plot(x,y,"k", label = r"$x=y$", linewidth=2)
+    plt.plot(x,y,"k", label = r"$x=y$")
 
     # make logarithmic fit
     a,r = np.polyfit(np.log(rewards), np.log(inflows), 1)
     x = np.linspace(1e-4,1,10000)
     y = np.exp(r + a*np.log(x))
     l = "log-log linear regression\n"+r"$a=$"+f"{round(a,2)}" + " " + r"$r=$"+f"{round(r,2)}"
-    ax.plot(x,y,"orange",label=l, linewidth=2)
+    plt.plot(x,y,"orange",label=l)
 
-    fontsize = 12
+    plt.legend(loc="lower right")
 
-    ax.legend(loc="lower right",fontsize=fontsize)
-    [x.set_linewidth(1.5) for x in ax.spines.values()]
-    
-    plt.xlabel("score",fontsize=fontsize)
-    plt.ylabel("predicted unnormalized probability",fontsize=fontsize)
+    plt.xlabel("score")
+    plt.ylabel("predicted unnormalized probability")
     plt.xscale('log')
     plt.yscale('log')
 
@@ -373,11 +421,6 @@ def make_scatter_inflow_reward_plot(experiment_id):
 
     plt.xticks([1e-4,1e-3,1e-2,1e-1,1])
     plt.yticks([1e-4,1e-3,1e-2,1e-1,1])
-
-    ax.tick_params(axis='x', labelsize=fontsize)
-    ax.tick_params(axis='y', labelsize=fontsize)
-
-    plt.tight_layout()
     
 
     figures_path = f"reports/figures/{experiment_id}"
@@ -434,33 +477,28 @@ def make_empirical_density_inflow_reward_plot(experiment_id):
     colors = ['blue', 'blue']
     legends = ["rewards","inflows"] 
     
-    fig, ax1 = plt.subplots(figsize=(6.75,4.1))
+    fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
     
-    nbins = [340,340]
+    nbins = [320,220]
     # plot empirical density for each beta
-    for i, (vals, n) in enumerate(zip([rewards / outflows,inflows / outflows],nbins)):
+    for i, (vals, n) in enumerate(zip([rewards,inflows],nbins)):
         _, bins = np.histogram(vals, bins=n)
         logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
         pdf, bins = np.histogram(vals, density=False, bins=logbins)
         pdf = pdf / np.sum(pdf)
-        
         ax1.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
         ax2.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
         
 
     ax1.grid()
-    ax1.set_xlabel("predicted " + r'$\hat{p}(x)/Z$' + " and " + r'$\hat{R}(x)/Z$' )
-    ax1.set_ylabel("empirical frequency of " + r'$\hat{p}(x)/Z$')
-    ax2.set_ylabel("empirical frequency of " + r'$\hat{R}(x)/Z$')
+    ax1.set_xlabel("predicted " + r'$\hat{p}(x)$' + " and " + r'$\hat{R}(x)$' )
+    ax1.set_ylabel("empirical frequency of " + r'$\hat{p}(x)$')
+    ax2.set_ylabel("empirical frequency of " + r'$\hat{R}(x)$')
     plt.xscale("log")
     
-    plt.xticks([1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1])
-    plt.xlim(1e-8,3e-1)
-    ax1.set_ylim(0,0.045)
-    ax2.set_ylim(0,0.045)
-    ax1.set_yticks([0,0.01,0.02,0.03,0.04])
-    ax2.set_yticks([0,0.01,0.02,0.03,0.04])
+    plt.xticks([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1])
+    plt.xlim(1e-6,3e-1)
     ax1.legend()
     ax1.spines['right'].set_visible(False)
     ax2.spines['right'].set_linestyle("--")
@@ -468,8 +506,6 @@ def make_empirical_density_inflow_reward_plot(experiment_id):
     ax2.spines['bottom'].set_linewidth(1.5)
     ax2.spines['left'].set_linewidth(1.5)
     ax2.spines['right'].set_linewidth(1.5)
-
-    plt.tight_layout()
 
     figures_path = f"reports/figures/{experiment_id}"
     os.makedirs(figures_path, exist_ok=True)
@@ -533,27 +569,19 @@ def make_leaf_flow_loss_plot(experiment_id):
 
     
     
-    fig, ax = plt.subplots(figsize=(6.64,4.1))
-    ax.loglog(steps, lls, color="blue")
-    ax.loglog(steps, fls, color="orange")
-    ax.fill_between(steps, llsmin, llsmax, color="blue", alpha=0.2)
-    ax.fill_between(steps, flsmin, flsmax, color="orange", alpha=0.2)
+    plt.figure()
+    plt.loglog(steps, lls, color="blue")
+    plt.loglog(steps, fls, color="orange")
+    plt.fill_between(steps, llsmin, llsmax, color="blue", alpha=0.2)
+    plt.fill_between(steps, flsmin, flsmax, color="orange", alpha=0.2)
 
-    [x.set_linewidth(1.5) for x in ax.spines.values()]
-
-    plt.ylim(0.0001,2100)
+    plt.ylim(0.0001,6000)
     plt.yticks([0.001,0.01,0.1,1,10,100,1000])
 
     plt.legend(["leaf loss", "flow loss"])
 
-    fontsize = 12
-    ax.set_xlabel("SGD steps",fontsize=fontsize)
-    ax.set_ylabel("loss",fontsize=fontsize)
-    ax.tick_params(axis='x', labelsize=fontsize)
-    ax.tick_params(axis='y', labelsize=fontsize)
-
-    plt.tight_layout()
-
+    plt.xlabel("SGD steps")
+    plt.ylabel("loss")
     plt.grid()
     file_id = len(leaf_losses)
     figures_path = f"reports/figures/{experiment_id}"
