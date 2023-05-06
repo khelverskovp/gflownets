@@ -14,7 +14,7 @@ Results for experiment can be found in the `results` folder. Note that `experime
 
 [Hydra](https://hydra.cc/docs/intro/) has been used to configure hyperparameters for each experiment. Configuration files are found in the `src/models/conf/experiment` folder.
 
-To run an experiment run the command `python src/models/train_model.py`. By default experiment 0 with specified hyperparameters in `src/models/conf/experiment/experiment0.yaml` will be used ([Link](https://github.com/khelverskovp/gflownets/blob/main/src/models/conf/experiment/experiment0.yaml). To change the `experiment` used in `train_model.py` modify the `experiment` entry in `src/models/conf/default_config.yaml` to the specific experiment you want to execute.
+To run an experiment run the command `python src/models/train_model.py`. By default experiment 0 with specified hyperparameters in `src/models/conf/experiment/experiment0.yaml` will be used ([Link](https://github.com/khelverskovp/gflownets/blob/main/src/models/conf/experiment/experiment0.yaml)). To change the `experiment` used in `train_model.py` modify the `experiment` entry in `src/models/conf/default_config.yaml` to the specific experiment you want to execute.
 
 ## Project Organization
 ------------
