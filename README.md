@@ -1,8 +1,16 @@
 Codebase for Bachelor Project about Generative Flow Networks (GFlowNets)
 ==============================
-Hello my name is
+By Kasper Helverskov Petersen and Marcus Roberto Nielsen
 
-Project Organization
+Implementation of GFlowNet for our Bachelor Project at DTU. Our code is inspired by the implementation in [GFNOrg/gflownet](GFNOrg/gflownet) by @bengioe, @MJ10 and @MKorablyov for the initial [paper](https://arxiv.org/abs/2106.04399) about GFlowNets.
+
+## Molecule Experiments
+-----------
+For the experiments we used Python 3.10.2 and CUDA 11.6. If you have CUDA 11.6 configured, you can run pip install -r requirements.txt. You can also change requirements.txt to match your CUDA version. (Replace cu116 to cuXXX, where XXX is your CUDA version).
+
+The compressed dataset consisting of 300k molecules can be found in 'data/raw'
+
+## Project Organization
 ------------
 
     ├── data
@@ -46,7 +54,6 @@ Project Organization
     ├── jobscript.sh       <- batch script to run on hpc
     ├── requirements.txt   <- The requirements file for virtual environment
     ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
-    │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
 
