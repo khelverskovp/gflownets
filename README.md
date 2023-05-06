@@ -1,6 +1,6 @@
 Codebase for Bachelor Project about Generative Flow Networks (GFlowNets)
 ==============================
-By Kasper Helverskov Petersen and Marcus Roberto Nielsen
+###By Kasper Helverskov Petersen and Marcus Roberto Nielsen
 
 Implementation of GFlowNet for our Bachelor Project at DTU. Our code is inspired by the implementation in [GFNOrg/gflownet](GFNOrg/gflownet) by @bengioe, @MJ10 and @MKorablyov for the initial [paper](https://arxiv.org/abs/2106.04399) about GFlowNets.
 
