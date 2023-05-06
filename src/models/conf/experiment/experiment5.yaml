@@ -1,4 +1,4 @@
-# config file for fifth experiment
+# config file for fifth experiment (identical to experiment 1)
 # hyperparameters
 hp:
   total_epochs: 250000

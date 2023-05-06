@@ -1,4 +1,4 @@
-# config file for fourth experiment
+# config file for fourth experiment (identical to experiment 1)
 # hyperparameters
 hp:
   total_epochs: 250000
