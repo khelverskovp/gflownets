@@ -1,7 +1,6 @@
-gflow
+Codebase for Bachelor Project about Generative Flow Networks (GFlowNets)
 ==============================
-
-Codebase for Bachelor Project
+Hello my name is
 
 Project Organization
 ------------
@@ -44,12 +43,9 @@ Project Organization
     ├── LICENSE
     ├── Makefile           <- Makefile with commands like `make data`
     ├── README.md          <- The top-level README for developers using this project.
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
-    │
+    ├── jobscript.sh       <- batch script to run on hpc
+    ├── requirements.txt   <- The requirements file for virtual environment
     ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
-    visualizations
-    │       └── visualize.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
