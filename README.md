@@ -8,7 +8,13 @@ Implementation of GFlowNet for our Bachelor Project at DTU. Our code is inspired
 -----------
 For the experiments we used Python 3.10.2 and CUDA 11.6. If you have CUDA 11.6 configured, you can run pip install -r requirements.txt. You can also change requirements.txt to match your CUDA version. (Replace cu116 to cuXXX, where XXX is your CUDA version).
 
-The compressed dataset consisting of 300k molecules can be found in `data/raw`
+The compressed dataset consisting of 300k molecules can be found in `data/raw`.
+
+Results for experiment can be found in the `results` folder. Note that `experiment_4` and `experiment_5` use the same parameters as `experiment_1` and can therefore both be considered runs of `experiment_1`.
+
+[Hydra](https://hydra.cc/docs/intro/) has been used to configure hyperparameters for each experiment. Configuration files are found in the `src/models/conf/experiment` folder.
+
+To run an experiment run the command `python src/models/train_model.py`. By default experiment 0 with specified hyperparameters in `src/models/conf/experiment/experiment0.yaml` will be used ([Link](https://github.com/khelverskovp/gflownets/blob/main/src/models/conf/experiment/experiment0.yaml). To change the `experiment` used in `train_model.py` modify the `experiment` entry in `src/models/conf/default_config.yaml` to the specific experiment you want to execute.
 
 ## Project Organization
 ------------
