@@ -1057,11 +1057,11 @@ def make_covariance_matrix_plot():
     for name in columns[2:]:
         df.loc[:,name] = df[name].apply(json.loads)
 
-    dockscore = np.array(df.dockscore, dtype=np.float64)
     
-    # compute all rewards from data and normalize
-    rewards = 4 - (dockscore - (-8.6)) / 1.1
-    normalized_rewards = (rewards - np.mean(rewards)) / np.std(rewards)
+    
+    # compute negated dockscore from data and normalize
+    negated_dockscore = -1 * np.array(df.dockscore, dtype=np.float64)
+    normalized_dockscore = (negated_dockscore - np.mean(negated_dockscore)) / np.std(negated_dockscore)
     
     # compute blocksizes and normalize
     blocksizes = np.array([len(bidx) for bidx in df.blockidxs])
@@ -1071,7 +1071,7 @@ def make_covariance_matrix_plot():
     atomsizes = np.array([s[-1] for s in df.slices])
     normalized_atomsizes = (atomsizes - np.mean(atomsizes)) / np.std(atomsizes)
 
-    cov = np.cov([normalized_rewards,normalized_blocksizes,normalized_atomsizes])
+    cov = np.cov([normalized_dockscore,normalized_blocksizes,normalized_atomsizes])
 
     fig, ax = plt.subplots(figsize=(6.4*1.1,4.8*1.1))
 
@@ -1083,7 +1083,7 @@ def make_covariance_matrix_plot():
     cbar.ax.tick_params(labelsize=fontsize)
 
     pos = [0.5,1.5,2.5]
-    labels = ["Rewards","Number of blocks", "Number of atoms"]
+    labels = ["Negated dockscore","Number of blocks", "Number of atoms"]
 
     ax.set_xticks(pos,labels,rotation=45)
     ax.set_yticks(pos,labels,rotation=0)
