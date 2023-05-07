@@ -50,8 +50,8 @@ def make_empirical_density_plot():
     rewards_beta4 = np.array(rewards_beta4)
     rewards_beta10 = np.array(rewards_beta10)
 
-    # get rewards for proxy dataset data/processed/rewards_proxy_dataset.pkl.gz
-    df_rewards = pd.read_pickle("data/processed/rewards_proxy_dataset.pkl.gz")
+    # get rewards for proxy dataset data/processed/rewards_proxy_dataset_true.pkl.gz
+    df_rewards = pd.read_pickle("data/processed/rewards_proxy_dataset_true.pkl.gz")
     
     # change to numpy array
     df_rewards = np.array(df_rewards)
@@ -59,11 +59,11 @@ def make_empirical_density_plot():
     linestyles = ['--', '-', ':', '-']
     colors = ['blue', 'blue', 'blue', 'black']
     #legends = [r'$\hat{p}(R | \beta=1)$', r'$\hat{p}(R | \beta=4)$', r'$\hat{p}(R | \beta=10)$', r'$\hat{p}(R | \mathrm{proxy\ dataset})$']
-    legends = [r'ours, $\beta=1$',r'ours, $\beta=4$',r'ours, $\beta=10$',"proxy dataset"]
+    legends = [r'GFlowNet, $\beta=1$',r'GFlowNet, $\beta=4$',r'GFlowNet, $\beta=10$',"proxy dataset"]
 
     fig, ax = plt.subplots(figsize=(6.6, 4.1))
 
-    nbins = 40
+    nbins = 45
     bins = np.linspace(0,9,nbins)
 
     # plot empirical density for each beta
@@ -75,7 +75,7 @@ def make_empirical_density_plot():
 
     ax.grid()
     ax.set_xlim(0,9)
-    ax.set_ylim(bottom=0.00)
+    ax.set_ylim(0.00,0.085)
 
     fontsize = 16
     ax.set_xlabel(r'$R(x)$',fontsize=fontsize)
@@ -160,7 +160,11 @@ def make_top_k_plot(k_values, experiment_ids):
         for tk in top_k_avg_runs[i]:
             top_k_avg += tk
         top_k_avg /= len(top_k_avg_runs[i])
-        ax.semilogx(top_k_rids, top_k_avg, ls, color="blue",label=lg)
+        if ls == '-':
+            ax.semilogx(top_k_rids, top_k_avg, ls, color="blue",label="GFlowNet")
+        ax.semilogx(top_k_rids, top_k_avg, ls, color="black",label=lg)
+        ax.semilogx(top_k_rids, top_k_avg, ls, color="blue")
+        
         
     fontsize = 16
     plt.xlim(1e1,1e6)
@@ -174,8 +178,16 @@ def make_top_k_plot(k_values, experiment_ids):
     plt.xlabel("molecules visited", fontsize=fontsize)
     plt.ylabel("avg " + r"$R$" + " of unique top " + r"$k$", fontsize=fontsize)
 
-    plt.legend(fontsize=fontsize-2)
+    #get handles and labels
+    handles, labels = plt.gca().get_legend_handles_labels()
 
+    #specify order of items in legend
+    order = [2,0,1,3]
+
+    #add legend to plot
+    plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order],
+               loc="upper left",fontsize=fontsize-2) 
+    
     [x.set_linewidth(1.5) for x in ax.spines.values()]
     ax.xaxis.set_tick_params(width=2,length=5)
     ax.yaxis.set_tick_params(width=2,length=5)
@@ -483,7 +495,7 @@ def make_bemis_murcko_avg_plot(T):
     
     plt.tight_layout()
 
-    figures_path = f"reports/figures"
+    figures_path = f"reports/figures/experiment_1"
     os.makedirs(figures_path, exist_ok=True)
 
     # save file
@@ -1250,6 +1262,53 @@ def make_reward_threshold_plot(thresholds, experiment_id):
     # save file
     file_id = len(rewards)
     filename = f"{figures_path}/reward_threshold_plot_{file_id}.png"
+    plt.savefig(filename)
+
+def make_proxy_true_density_plot():
+    # get rewards for proxy dataset data/processed/rewards_proxy_dataset_true.pkl.gz
+    rewards_true = pd.read_pickle("data/processed/rewards_proxy_dataset_true.pkl.gz")
+    rewards = pd.read_pickle("data/processed/rewards_proxy_dataset.pkl.gz")
+    
+    linestyles = ['-', '-']
+    colors = ['black', 'blue']
+    legends = ["target values", "proxy"]
+
+    fig, ax = plt.subplots(figsize=(6.6, 4.1))
+
+    nbins = 45
+    bins = np.linspace(0,9,nbins)
+
+    # plot empirical density for each beta
+    for i, rewards in enumerate([rewards_true, rewards]):
+        pdf, bins = np.histogram(rewards, density=False, bins=bins)
+        pdf = pdf / np.sum(pdf)
+        ax.plot(bins[:-1], pdf, linestyle=linestyles[i], color=colors[i], label=legends[i])
+        
+
+    ax.grid()
+    ax.set_xlim(0,9)
+    ax.set_ylim(0.00,0.085)
+
+    fontsize = 16
+    ax.set_xlabel(r'$R(x)$',fontsize=fontsize)
+    ax.set_ylabel('density',fontsize=fontsize)
+    ax.set_xticks(np.arange(0, 9, 2))
+    ax.set_yticks([0.0,0.02,0.04,0.06,0.08])
+    ax.tick_params(axis='x', labelsize=fontsize)
+    ax.tick_params(axis='y', labelsize=fontsize)
+    ax.legend(loc="upper right",fontsize=fontsize-2)
+
+    [x.set_linewidth(1.5) for x in ax.spines.values()]
+    ax.xaxis.set_tick_params(width=2,length=5)
+    ax.yaxis.set_tick_params(width=2,length=5)
+
+    plt.tight_layout()
+
+    figures_path = f"reports/figures"
+    os.makedirs(figures_path, exist_ok=True)
+    
+    # save file
+    filename = f"{figures_path}/empirical_density_proxy_plot.png"
     plt.savefig(filename)
     
         

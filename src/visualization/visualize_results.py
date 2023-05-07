@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     #make_top_k_plot([10,100,1000], experiment_ids)
     #make_empirical_density_plot()
-    #make_bemis_murcko_avg_plot(7.5)
+    #make_bemis_murcko_avg_plot(7)
 
     #make_bemis_murcko_avg_plot()
     #make_leaf_flow_loss_plot(experiment_id)
@@ -36,3 +36,5 @@ if __name__ == "__main__":
     #make_blocksize_distribution_plot()
     #make_nonhydrogen_distribution_plot()
     #make_covariance_matrix_plot()
+
+    #make_proxy_true_density_plot()
