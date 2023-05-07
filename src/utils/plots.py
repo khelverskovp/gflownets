@@ -340,7 +340,7 @@ def make_total_unique_molecules_plot(experiment_ids, T):
 
     fig, ax = plt.subplots(figsize=(6.2, 4.1))
 
-    plt.plot(steps,unique_molecules_avg, color="black",linestyle="-")
+    plt.plot(steps,unique_molecules_avg, color="black",linestyle="-", label="Total unique molecules")
 
     fontsize = 14
     plt.xlabel("states visited",fontsize=fontsize)
@@ -376,6 +376,8 @@ def make_total_unique_molecules_plot(experiment_ids, T):
     # and yaxis
     plt.gca().yaxis.set_tick_params(width=2, length=5)
     
+    plt.legend(loc="upper left",fontsize=fontsize)
+
     plt.tight_layout()
 
     figures_path = f"reports/figures/{experiment_ids[0]}"
