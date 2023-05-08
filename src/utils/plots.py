@@ -455,11 +455,13 @@ def make_bemis_murcko_avg_plot(T):
 
 
     # make plot with # of modes with R > T on the ylabel and states visisted on the xlabel
-    plt.plot(np.arange(len(is_bemis_murcko1))+1,np.cumsum(is_bemis_murcko1 + is_bemis_murcko4 + is_bemis_murcko5)/3)
+    plt.plot(np.arange(len(is_bemis_murcko1))+1,np.cumsum(is_bemis_murcko1 + is_bemis_murcko4 + is_bemis_murcko5)/3, "-", color="blue", label="GFlowNet")
     plt.xlabel("states visited" , fontsize=fontsize)
     # set ylabel with the actual T value
     plt.ylabel(f"# of modes with R > {T}" , fontsize=fontsize)
     plt.grid()
+
+    plt.legend(loc="upper left",fontsize=fontsize)
 
     # use get_offset_text().set_fontsize(fontsize)
     plt.gca().get_xaxis().get_offset_text().set_fontsize(fontsize)
@@ -468,7 +470,7 @@ def make_bemis_murcko_avg_plot(T):
     print(f"Average final cumsum value: {np.cumsum(is_bemis_murcko1 + is_bemis_murcko4 + is_bemis_murcko5)[-1]/3}")
 
     # make the y-axis go from 0 til 10.000
-    
+    plt.ylim(-500,10500)
     plt.xlim(0, 1.0*10**6)
 
     # set the fontsize for the y-axis
